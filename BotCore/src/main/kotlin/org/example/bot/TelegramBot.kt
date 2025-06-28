@@ -1,28 +1,37 @@
 package org.example.bot
 
-import org.example.bot.model.Word
-import org.example.bot.repository.WordRepository
+import jakarta.annotation.PostConstruct
+import org.example.bot.commands.*
+import org.example.storage.service.UserService
 import org.springframework.stereotype.Component
-import org.telegram.telegrambots.bots.TelegramLongPollingBot
+import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingCommandBot
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
 
 @Component
 class TelegramBot(
     private val botProperties: BotProperties,
-    private val wordRepository: WordRepository
-) : TelegramLongPollingBot() {
+    private val userService: UserService
+) : TelegramLongPollingCommandBot() {
 
     override fun getBotUsername(): String = botProperties.username
     override fun getBotToken(): String = botProperties.token
 
-    override fun onUpdateReceived(update: Update) {
+    @PostConstruct
+    fun registerCommands() {
+        register(StartCommand())
+        register(HelpCommand())
+        register(SubscribeCommand())    // позже можно передать сервис
+        register(UnsubscribeCommand())  // позже можно передать сервис
+        register(ListGroupsCommand())   // позже можно передать сервис
+    }
+
+    override fun processNonCommandUpdate(update: Update) {
         val message = update.message ?: return
         val text = message.text ?: return
         val chatId = message.chatId.toString()
 
-        wordRepository.save(Word(text = text))
-
-        execute(SendMessage(chatId, "Слово '$text' сохранено в базе данных!"))
+        val reply = SendMessage(chatId, "Неизвестная команда. Используйте /help для списка команд.")
+        execute(reply)
     }
 }

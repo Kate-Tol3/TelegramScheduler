@@ -8,11 +8,12 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 
-@SpringBootApplication
-@EnableJpaRepositories("org.example.bot.repository")
-@EntityScan("org.example.bot.model")
+@SpringBootApplication(
+    scanBasePackages = ["org.example.bot", "org.example.storage"]
+)
+@EnableJpaRepositories("org.example.storage.repository")
+@EntityScan("org.example.storage.model")
 class BotApplication
-
 fun main(args: Array<String>) {
     runApplication<BotApplication>(*args) {
         addInitializers(

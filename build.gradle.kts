@@ -1,5 +1,7 @@
 plugins {
     kotlin("jvm") version "1.9.22"
+    id("org.springframework.boot") version "3.2.0"
+    id("io.spring.dependency-management") version "1.1.4"
 }
 
 
@@ -18,7 +20,15 @@ dependencies {
         implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
         implementation("org.springframework.boot:spring-boot-configuration-processor")
         implementation("jakarta.xml.bind:jakarta.xml.bind-api:3.0.1")
-        implementation("org.glassfish.jaxb:jaxb-runtime:3.0.2")
+//        implementation("org.glassfish.jaxb:jaxb-runtime:3.0.2")
+
+        implementation("org.springframework.boot:spring-boot-starter-data-jpa") // без версии
+        implementation("org.jetbrains.kotlin:kotlin-reflect")
+        implementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
+
+        implementation("javax.xml.bind:jaxb-api:2.3.1")
+        implementation("org.glassfish.jaxb:jaxb-runtime:2.3.1")
+
     }
 
     testImplementation(kotlin("test"))
