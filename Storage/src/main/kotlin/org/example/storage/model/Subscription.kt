@@ -13,5 +13,11 @@ class Subscription(
     val user: User,
 
     @ManyToOne @JoinColumn(name = "group_id")
-    val group: Group
+    val group: Group,
+
+    @Column(nullable = false)
+    val groupName: String = group.name // автоматически копируем имя
 )
+
+
+

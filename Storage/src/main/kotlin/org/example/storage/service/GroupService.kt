@@ -12,4 +12,12 @@ class GroupService(private val groupRepository: GroupRepository) {
     fun save(group: Group): Group = groupRepository.save(group)
     fun findAll(): List<Group> = groupRepository.findAll()
     fun delete(id: UUID) = groupRepository.deleteById(id)
+    fun resolveGroupByName(name: String): Group { //get or create by name
+        return groupRepository.findByName(name)
+            ?: groupRepository.save(Group(name = name))
+    }
+
+    fun createGroup(name: String): Group {
+        return groupRepository.save(Group(name = name))
+    }
 }

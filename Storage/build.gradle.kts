@@ -19,6 +19,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa") // JPA + Hibernate
     implementation("org.jetbrains.kotlin:kotlin-reflect") // для работы с аннотациями
     implementation("jakarta.persistence:jakarta.persistence-api:3.1.0") // JPA аннотации
+    implementation("org.telegram:telegrambotsextensions:6.8.0")
     testImplementation(kotlin("test"))
 }
 

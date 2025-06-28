@@ -1,21 +1,54 @@
 package org.example.bot.commands
 
+import org.example.storage.service.GroupService
+import org.example.storage.service.SubscriptionService
+import org.example.storage.service.UserService
 import org.telegram.telegrambots.extensions.bots.commandbot.commands.BotCommand
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Chat
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.bots.AbsSender
 
-class SubscribeCommand : BotCommand("subscribe", "Подписаться на группу") {
-    override fun execute(absSender: AbsSender, user: User, chat: Chat, arguments: Array<out String>) {
+class SubscribeCommand(
+    private val userService: UserService,
+    private val groupService: GroupService,
+    private val subscriptionService: SubscriptionService
+) : BotCommand("subscribe", "Подписаться на группу") {
+
+    override fun execute(
+        sender: AbsSender,
+        user: User,
+        chat: Chat,
+        arguments: Array<String>
+    ) {
+        val chatId = chat.id.toString()
+
         if (arguments.isEmpty()) {
-            absSender.execute(SendMessage(chat.id.toString(), "Укажите имя группы: /subscribe <group>"))
+            sender.execute(SendMessage(chatId, "Пожалуйста, укажите название группы: /subscribe <group>"))
             return
         }
 
-        val group = arguments[0]
-        // TODO: Реализовать сохранение подписки в БД
-        val response = SendMessage(chat.id.toString(), "Вы подписались на группу: $group")
-        absSender.execute(response)
+        val groupName = arguments.joinToString(" ")
+        val dbUser = userService.resolveUser(user)
+        val dbGroup = groupService.findByName(groupName)
+
+        if (dbGroup == null) {
+            sender.execute(
+                SendMessage(
+                    chatId,
+                    "Группа '$groupName' не найдена. Хотите её создать? Напишите /create_group $groupName"
+                )
+            )
+            return
+        }
+
+        val subscribed = subscriptionService.subscribe(dbUser, dbGroup)
+        val message = if (subscribed) {
+            "Вы успешно подписались на группу '$groupName'."
+        } else {
+            "Вы уже подписаны на группу '$groupName'."
+        }
+
+        sender.execute(SendMessage(chatId, message))
     }
 }

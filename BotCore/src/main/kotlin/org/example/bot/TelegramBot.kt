@@ -2,7 +2,7 @@ package org.example.bot
 
 import jakarta.annotation.PostConstruct
 import org.example.bot.commands.*
-import org.example.storage.service.UserService
+import org.example.storage.service.*
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingCommandBot
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
@@ -11,7 +11,9 @@ import org.telegram.telegrambots.meta.api.objects.Update
 @Component
 class TelegramBot(
     private val botProperties: BotProperties,
-    private val userService: UserService
+    private val userService: UserService,
+    private val groupService: GroupService,
+    private val subscriptionService: SubscriptionService
 ) : TelegramLongPollingCommandBot() {
 
     override fun getBotUsername(): String = botProperties.username
@@ -21,9 +23,10 @@ class TelegramBot(
     fun registerCommands() {
         register(StartCommand())
         register(HelpCommand())
-        register(SubscribeCommand())    // позже можно передать сервис
-        register(UnsubscribeCommand())  // позже можно передать сервис
+        register(SubscribeCommand(userService, groupService, subscriptionService))
+        register(UnsubscribeCommand(userService, groupService, subscriptionService))
         register(ListGroupsCommand())   // позже можно передать сервис
+        register(CreateGroupCommand(groupService))
     }
 
     override fun processNonCommandUpdate(update: Update) {
