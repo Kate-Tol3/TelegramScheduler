@@ -10,4 +10,5 @@ interface SubscriptionRepository : JpaRepository<Subscription, UUID> {
     fun findByUserId(userId: UUID): List<Subscription>
     fun findByGroupId(groupId: UUID): List<Subscription>
     fun findByUserAndGroup(user: User, group: Group): Subscription?
+    fun findByUser(user: User): List<Subscription>
 }

@@ -39,4 +39,6 @@ class SubscriptionService(private val subscriptionRepository: SubscriptionReposi
         }
     }
 
+    fun findByUser(user: User): List<Subscription> = subscriptionRepository.findByUser(user)
+
 }

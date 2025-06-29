@@ -14,14 +14,16 @@ class UserService(private val userRepository: UserRepository) {
     fun findAll(): List<User> = userRepository.findAll()
     fun delete(id: UUID) = userRepository.deleteById(id)
 
-    fun resolveUser(telegramUser: TelegramUser): User {
-        return findByTelegramId(telegramUser.id.toLong())
-            ?: save(
+    fun resolveUser(tgUser: org.telegram.telegrambots.meta.api.objects.User): User {
+        return userRepository.findByTelegramId(tgUser.id)
+            ?: userRepository.save(
                 User(
-                    telegramId = telegramUser.id.toLong(),
-                    username = telegramUser.userName ?: "unknown"
+                    telegramId = tgUser.id,
+                    chatId = tgUser.id.toString(), // Telegram chatId == telegram user id
+                    username = tgUser.userName ?: "unknown"
                 )
             )
     }
+
 }
 

@@ -9,19 +9,20 @@ import org.telegram.telegrambots.extensions.bots.commandbot.commands.BotCommand
 class HelpCommand : BotCommand("help", "Список всех доступных команд") {
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val helpText = """
-            /start - Начать работу с ботом
-            /help - Список всех доступных команд
-            /subscribe [group] - Подписка на уведомления по группе
-            /unsubscribe [group] - Отписка от уведомлений по группе
-            /list_groups - Список доступных групп
-            /my_subscriptions - Мои подписки
-            /schedule_call [дата] [время] [ссылка] - Запланировать звонок
-            /upcoming_calls - Ближайшие звонки
-            /latest_mrs - Последние Merge Request’ы
-            /releases - Последние релизы
-            /settings - Настройки уведомлений
+            /start — Начать работу с ботом
+            /help — Список всех доступных команд
+            /subscribe [group] — Подписка на уведомления по группе
+            /unsubscribe [group] — Отписка от уведомлений по группе
+            /create_group [group] — Создать собственную группу
+            /list_groups — Список доступных групп
+            /list_templates — Список доступных шаблонов
+            /my_subscriptions — Показать мои текущие подписки
+            /notify_immediate <CALL|MR|RELEASE> <link> <place> <time> <description> — Мгновенно отправить уведомление
+            /notify_schedule <CALL|MR|RELEASE> <link> <place> <time> <description> <eventTime:yyyy-MM-ddTHH:mm> <repeatCount> <repeatIntervalMinutes> — Запланировать уведомление
         """.trimIndent()
+
         sender.execute(SendMessage(chat.id.toString(), helpText))
     }
 }
+
 
