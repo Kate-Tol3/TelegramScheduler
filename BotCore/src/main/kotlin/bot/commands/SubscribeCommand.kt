@@ -9,11 +9,11 @@ import org.telegram.telegrambots.meta.api.objects.Chat
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.bots.AbsSender
 
-class UnsubscribeCommand(
+class SubscribeCommand(
     private val userService: UserService,
     private val groupService: GroupService,
     private val subscriptionService: SubscriptionService
-) : BotCommand("unsubscribe", "Отписаться от группы") {
+) : BotCommand("subscribe", "Подписаться на группу") {
 
     override fun execute(
         sender: AbsSender,
@@ -24,24 +24,29 @@ class UnsubscribeCommand(
         val chatId = chat.id.toString()
 
         if (arguments.isEmpty()) {
-            sender.execute(SendMessage(chatId, "Пожалуйста, укажите название группы: /unsubscribe <group>"))
+            sender.execute(SendMessage(chatId, "Пожалуйста, укажите название группы: /subscribe <group>"))
             return
         }
 
         val groupName = arguments.joinToString(" ")
         val dbUser = userService.resolveUser(user)
-        val dbGroup = groupService.findByName(groupName)
+        val dbGroup = groupService.findByName(groupName, chatId)
 
         if (dbGroup == null) {
-            sender.execute(SendMessage(chatId, "Группа '$groupName' не найдена."))
+            sender.execute(
+                SendMessage(
+                    chatId,
+                    "Группа '$groupName' не найдена. Хотите её создать? Напишите /create_group $groupName"
+                )
+            )
             return
         }
 
-        val unsubscribed = subscriptionService.unsubscribe(dbUser, dbGroup)
-        val message = if (unsubscribed) {
-            "Вы успешно отписались от группы '$groupName'."
+        val subscribed = subscriptionService.subscribe(dbUser, dbGroup)
+        val message = if (subscribed) {
+            "Вы успешно подписались на группу '$groupName'."
         } else {
-            "Вы не были подписаны на группу '$groupName'."
+            "Вы уже подписаны на группу '$groupName'."
         }
 
         sender.execute(SendMessage(chatId, message))

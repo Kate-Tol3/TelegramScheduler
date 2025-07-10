@@ -24,6 +24,5 @@ class UserService(private val userRepository: UserRepository) {
                 )
             )
     }
-
 }
 

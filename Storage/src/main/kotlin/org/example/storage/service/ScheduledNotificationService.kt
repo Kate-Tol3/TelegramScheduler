@@ -3,6 +3,7 @@ package org.example.storage.service
 import org.example.storage.model.ScheduledNotification
 import org.example.storage.model.Template
 import org.example.storage.model.Event
+import org.example.storage.model.User
 import org.example.storage.repository.ScheduledNotificationRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
@@ -40,5 +41,36 @@ class ScheduledNotificationService(
         )
         return scheduledNotificationRepository.save(notification)
     }
+
+    fun decreaseRepeatOrRemove(notification: ScheduledNotification) {
+        if (notification.repeatCount > 1) {
+            notification.repeatCount -= 1
+            notification.eventTime = notification.eventTime.plusMinutes(notification.repeatIntervalMinutes.toLong())
+            save(notification)
+        } else {
+            delete(notification.id!!)
+        }
+    }
+
+    fun findAllWithUsers(): List<ScheduledNotification> =
+        scheduledNotificationRepository.findAllWithUsers()
+
+    fun updateTargetUsers(id: UUID, newUsers: Set<User>) {
+        val existing = scheduledNotificationRepository.findById(id).orElseThrow()
+
+        val updated = ScheduledNotification(
+            id = existing.id,
+            template = existing.template,
+            event = existing.event,
+            eventTime = existing.eventTime,
+            repeatCount = existing.repeatCount,
+            repeatIntervalMinutes = existing.repeatIntervalMinutes,
+            targetGroups = existing.targetGroups,
+            targetUsers = newUsers
+        )
+
+        scheduledNotificationRepository.save(updated)
+    }
+
 
 }

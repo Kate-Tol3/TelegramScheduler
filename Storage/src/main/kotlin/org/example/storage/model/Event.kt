@@ -1,7 +1,7 @@
 package org.example.storage.model
 
 
-import MapToJsonConverter
+//import MapToJsonConverter
 import com.vladmihalcea.hibernate.type.json.JsonBinaryType
 import jakarta.persistence.*
 import org.hibernate.annotations.Type

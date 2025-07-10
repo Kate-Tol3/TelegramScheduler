@@ -10,7 +10,17 @@ class GroupService(private val groupRepository: GroupRepository) {
 
     fun findById(id: UUID): Group? = groupRepository.findById(id).orElse(null)
 
-    fun findByName(name: String): Group? = groupRepository.findByName(name)
+//    fun findByName(name: String): Group? = groupRepository.findByName(name)
+
+    fun findByName(name: String, chatId: String?): Group? {
+        return if (chatId != null) {
+            groupRepository.findByNameAndChatId(name, chatId)
+        } else {
+            groupRepository.findGlobalByName(name)
+        }
+    }
+
+
 
     fun save(group: Group): Group = groupRepository.save(group)
 
@@ -18,25 +28,25 @@ class GroupService(private val groupRepository: GroupRepository) {
 
     fun delete(id: UUID) = groupRepository.deleteById(id)
 
-    fun resolveGroupByName(name: String): Group {
-        return groupRepository.findByName(name)
-            ?: groupRepository.save(Group(name = name, description = "Группа $name"))
-    }
+//    fun resolveGroupByName(name: String): Group {
+//        return groupRepository.findByName(name)
+//            ?: groupRepository.save(Group(name = name, description = "Группа $name"))
+//    }
 
     fun createGroup(name: String, description: String = "", chatId: String? = null): Group {
         return groupRepository.save(Group(name = name, description = description, chatId = chatId))
     }
 
-    fun updateChatId(name: String, chatId: String): Group? {
-        val group = groupRepository.findByName(name)
-        return if (group != null) {
-            val updated = Group(
-                id = group.id,
-                name = group.name,
-                description = group.description,
-                chatId = chatId
-            )
-            groupRepository.save(updated)
-        } else null
-    }
+//    fun updateChatId(name: String, chatId: String): Group? {
+//        val group = groupRepository.findByName(name)
+//        return if (group != null) {
+//            val updated = Group(
+//                id = group.id,
+//                name = group.name,
+//                description = group.description,
+//                chatId = chatId
+//            )
+//            groupRepository.save(updated)
+//        } else null
+//    }
 }

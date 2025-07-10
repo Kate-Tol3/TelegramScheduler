@@ -18,9 +18,9 @@ class ScheduledNotification(
     val event: Event,  // ← добавлено поле
 
     @Column(nullable = false)
-    val eventTime: LocalDateTime,
+    var eventTime: LocalDateTime,
 
-    val repeatCount: Int = 0,
+    var repeatCount: Int = 0,
     val repeatIntervalMinutes: Int = 0,
 
     @ManyToMany
