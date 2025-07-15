@@ -21,7 +21,7 @@ class TelegramBot(
     private val eventService: EventService,
     private val scheduledNotificationService: ScheduledNotificationService,
     private val notificationSender: NotificationSender,
-    private val testScheduleCommand: TestScheduleCommand
+//    private val testScheduleCommand: TestScheduleCommand
 ) : TelegramLongPollingCommandBot() {
 
     override fun getBotUsername(): String = botProperties.username
@@ -38,9 +38,9 @@ class TelegramBot(
         register(ListGroupsCommand(groupService))
         register(CreateGroupCommand(groupService))
         register(NotifyImmediateCommand(eventService, templateService,userService, notificationSender))
-        register(NotifyScheduleCommand(eventService,templateService,scheduledNotificationService))
+        register(NotifyScheduleCommand(eventService,templateService,scheduledNotificationService, groupService))
         register(AddTemplateCommand(templateService))
-        register(testScheduleCommand)
+//        register(testScheduleCommand)
     }
 
     override fun processNonCommandUpdate(update: Update) {

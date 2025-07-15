@@ -1,9 +1,6 @@
 package org.example.storage.service
 
-import org.example.storage.model.ScheduledNotification
-import org.example.storage.model.Template
-import org.example.storage.model.Event
-import org.example.storage.model.User
+import org.example.storage.model.*
 import org.example.storage.repository.ScheduledNotificationRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
@@ -27,20 +24,28 @@ class ScheduledNotificationService(
         eventTime: LocalDateTime,
         repeatCount: Int,
         repeatIntervalMinutes: Int,
-        event: Event
+        event: Event,
+        group: Group,
+        users: Set<User>
     ): ScheduledNotification {
         val notification = ScheduledNotification(
-            id = UUID.randomUUID(),
             template = template,
+            event = event,
             eventTime = eventTime,
             repeatCount = repeatCount,
             repeatIntervalMinutes = repeatIntervalMinutes,
-            targetGroups = emptySet(), // пока не указываем группы
-            targetUsers = emptySet(),  // и пользователей тоже
-            event = event
+            targetGroups = setOf(group),
+            targetUsers = users
         )
         return scheduledNotificationRepository.save(notification)
     }
+
+    fun getDueNotificationsWithTargets(now: LocalDateTime): List<ScheduledNotification> {
+        return scheduledNotificationRepository.findDueWithTargets(now)
+    }
+
+
+
 
     fun decreaseRepeatOrRemove(notification: ScheduledNotification) {
         if (notification.repeatCount > 1) {
@@ -71,6 +76,17 @@ class ScheduledNotificationService(
 
         scheduledNotificationRepository.save(updated)
     }
+
+    fun getDueNotifications(now: LocalDateTime): List<ScheduledNotification> {
+        return scheduledNotificationRepository.findAllByEventTimeBeforeAndDispatchedFalse(now)
+    }
+
+    fun markAsDispatched(notifications: List<ScheduledNotification>) {
+        notifications.forEach { it.dispatched = true }
+        scheduledNotificationRepository.saveAll(notifications)
+    }
+
+
 
 
 }

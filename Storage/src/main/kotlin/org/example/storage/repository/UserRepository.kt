@@ -8,4 +8,6 @@ import java.util.*
 
 interface UserRepository : JpaRepository<User, UUID> {
     fun findByTelegramId(telegramId: Long): User?
+//    fun findAllByGroupsContaining(group: Group): List<User>
+
 }

@@ -15,7 +15,7 @@ class ScheduledNotification(
 
     @ManyToOne
     @JoinColumn(name = "event_id", nullable = false)
-    val event: Event,  // ← добавлено поле
+    val event: Event,
 
     @Column(nullable = false)
     var eventTime: LocalDateTime,
@@ -37,5 +37,9 @@ class ScheduledNotification(
         joinColumns = [JoinColumn(name = "scheduled_notification_id")],
         inverseJoinColumns = [JoinColumn(name = "user_id")]
     )
-    val targetUsers: Set<User> = emptySet()
+    val targetUsers: Set<User> = emptySet(),
+
+    @Column(nullable = false)
+    var dispatched: Boolean = false // ← добавлено поле
+
 )

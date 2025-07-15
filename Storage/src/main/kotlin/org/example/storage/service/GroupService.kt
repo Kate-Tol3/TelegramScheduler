@@ -13,18 +13,17 @@ class GroupService(private val groupRepository: GroupRepository) {
 //    fun findByName(name: String): Group? = groupRepository.findByName(name)
 
     fun findByName(name: String, chatId: String?): Group? {
-        return if (chatId != null) {
-            groupRepository.findByNameAndChatId(name, chatId)
-        } else {
-            groupRepository.findGlobalByName(name)
-        }
+        return groupRepository.findByNameAndChatId(name, chatId)
+            ?: groupRepository.findGlobalByName(name)
     }
+
 
 
 
     fun save(group: Group): Group = groupRepository.save(group)
 
     fun findAll(): List<Group> = groupRepository.findAll()
+
 
     fun delete(id: UUID) = groupRepository.deleteById(id)
 

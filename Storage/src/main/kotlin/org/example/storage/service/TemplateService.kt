@@ -36,17 +36,17 @@ class TemplateService(private val templateRepository: TemplateRepository) {
                 Template(
                     eventType = EventType.CALL,
                     channel = Channel.BOTH,
-                    text = "📞 Через {{time}} начнётся созвон {{description}}.\nМесто: {{place}}\nСсылка: {{link}}"
+                    text = "📞 В {time} начнётся созвон {description}.\nМесто: {place}\nСсылка: {link}"
                 ),
                 Template(
                     eventType = EventType.MR,
                     channel = Channel.BOTH,
-                    text = "🔃 Новый Merge Request: {{description}}\nСсылка: {{link}}"
+                    text = "🔃 Новый Merge Request: {description}\nСсылка: {link}"
                 ),
                 Template(
                     eventType = EventType.RELEASE,
                     channel = Channel.BOTH,
-                    text = "🚀 Новый релиз: {{description}}\nСсылка: {{link}}"
+                    text = "🚀 Новый релиз: {description}\nСсылка: {link}"
                 )
             )
 
@@ -56,5 +56,7 @@ class TemplateService(private val templateRepository: TemplateRepository) {
             println("ℹ️ Шаблоны уже существуют. Пропускаем инициализацию.")
         }
     }
+
+
 
 }

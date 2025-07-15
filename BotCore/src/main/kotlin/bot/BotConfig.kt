@@ -10,6 +10,7 @@ class BotConfig {
 
     @Bean
     fun telegramBotsApi(bot: TelegramBot): TelegramBotsApi {
+        println("🤖 Telegram бот запускается…")
         val botsApi = TelegramBotsApi(DefaultBotSession::class.java)
         botsApi.registerBot(bot)
         return botsApi

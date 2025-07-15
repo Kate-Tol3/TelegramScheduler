@@ -19,7 +19,7 @@ repositories {
 //}
 
 dependencies {
-    implementation(project(":BotCore"))
+//    implementation(project(":BotCore"))
     implementation(project(":Storage"))
     implementation(project(":KafkaMessaging"))
 

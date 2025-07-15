@@ -4,6 +4,9 @@ bot:
   username: ${TELEGRAM_BOT_USERNAME}
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
+
   datasource:
     url: jdbc:postgresql://localhost:5432/telegrambot
     username: bot_user
@@ -28,5 +31,10 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  logging:
+    level:
+      org.springframework.kafka: INFO
+      org.example.scheduler: DEBUG
+
 
 

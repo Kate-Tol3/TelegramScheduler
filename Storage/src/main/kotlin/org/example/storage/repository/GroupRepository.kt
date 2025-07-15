@@ -9,7 +9,7 @@ import java.util.*
 interface GroupRepository : JpaRepository<Group, UUID> {
     fun findByName(name: String): Group?
 
-    fun findByNameAndChatId(name: String, chatId: String): Group?
+    fun findByNameAndChatId(name: String, chatId: String?): Group?
 
     @Query("SELECT g FROM Group g WHERE g.name = :name AND g.chatId IS NULL")
     fun findGlobalByName(@Param("name") name: String): Group?
