@@ -3,8 +3,8 @@ package org.example.bot
 import jakarta.annotation.PostConstruct
 import org.example.bot.commands.*
 import org.example.bot.sender.NotificationSender
-import org.example.storage.repository.EventRepository
-import org.example.storage.repository.ScheduledNotificationRepository
+//import org.example.storage.repository.EventRepository
+//import org.example.storage.repository.ScheduledNotificationRepository
 import org.example.storage.service.*
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingCommandBot
@@ -21,7 +21,6 @@ class TelegramBot(
     private val eventService: EventService,
     private val scheduledNotificationService: ScheduledNotificationService,
     private val notificationSender: NotificationSender,
-//    private val testScheduleCommand: TestScheduleCommand
 ) : TelegramLongPollingCommandBot() {
 
     override fun getBotUsername(): String = botProperties.username
@@ -40,7 +39,7 @@ class TelegramBot(
         register(NotifyImmediateCommand(eventService, templateService,userService, notificationSender))
         register(NotifyScheduleCommand(eventService,templateService,scheduledNotificationService, groupService))
         register(AddTemplateCommand(templateService))
-//        register(testScheduleCommand)
+        register(DeleteGroupCommand(groupService))
     }
 
     override fun processNonCommandUpdate(update: Update) {

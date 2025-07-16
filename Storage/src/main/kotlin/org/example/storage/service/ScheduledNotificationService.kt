@@ -81,10 +81,27 @@ class ScheduledNotificationService(
         return scheduledNotificationRepository.findAllByEventTimeBeforeAndDispatchedFalse(now)
     }
 
+//    fun markAsDispatched(notifications: List<ScheduledNotification>) {
+//        notifications.forEach { it.dispatched = true }
+//        scheduledNotificationRepository.saveAll(notifications)
+//    }
+
     fun markAsDispatched(notifications: List<ScheduledNotification>) {
-        notifications.forEach { it.dispatched = true }
+        notifications.forEach { notification ->
+            if (notification.repeatCount > 1 && notification.repeatIntervalMinutes > 0) {
+                // Повторяем: уменьшаем счётчик и сдвигаем время
+                notification.repeatCount -= 1
+                notification.eventTime = notification.eventTime.plusMinutes(notification.repeatIntervalMinutes.toLong())
+            } else {
+                // Повторов не будет — помечаем как отправленное
+                notification.dispatched = true
+            }
+        }
+
+        // Сохраняем изменения
         scheduledNotificationRepository.saveAll(notifications)
     }
+
 
 
 

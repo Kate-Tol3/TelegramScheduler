@@ -25,7 +25,14 @@ class GroupService(private val groupRepository: GroupRepository) {
     fun findAll(): List<Group> = groupRepository.findAll()
 
 
-    fun delete(id: UUID) = groupRepository.deleteById(id)
+    fun delete(id: UUID) {
+        groupRepository.deleteById(id)
+    }
+
+    fun delete(group: Group) {
+        group.id?.let { delete(it) }
+        // если id == null — просто ничего не делаем
+    }
 
 //    fun resolveGroupByName(name: String): Group {
 //        return groupRepository.findByName(name)
