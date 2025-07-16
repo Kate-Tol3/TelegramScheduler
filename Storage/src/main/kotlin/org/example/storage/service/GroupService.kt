@@ -17,8 +17,9 @@ class GroupService(private val groupRepository: GroupRepository) {
             ?: groupRepository.findGlobalByName(name)
     }
 
-
-
+    fun findAllByName(name: String): List<Group> {
+        return groupRepository.findAllByName(name)
+    }
 
     fun save(group: Group): Group = groupRepository.save(group)
 
@@ -42,6 +43,9 @@ class GroupService(private val groupRepository: GroupRepository) {
     fun createGroup(name: String, description: String = "", chatId: String? = null): Group {
         return groupRepository.save(Group(name = name, description = description, chatId = chatId))
     }
+
+    fun findByChatId(chatId: String): Group? = groupRepository.findByChatId(chatId)
+
 
 //    fun updateChatId(name: String, chatId: String): Group? {
 //        val group = groupRepository.findByName(name)

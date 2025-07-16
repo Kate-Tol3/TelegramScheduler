@@ -9,10 +9,10 @@ import java.util.*
 
 @Service
 class SubscriptionService(private val subscriptionRepository: SubscriptionRepository) {
-    fun findById(id: UUID): Subscription? = subscriptionRepository.findById(id).orElse(null)
-    fun save(subscription: Subscription): Subscription = subscriptionRepository.save(subscription)
+    //fun findById(id: UUID): Subscription? = subscriptionRepository.findById(id).orElse(null)
+    //fun save(subscription: Subscription): Subscription = subscriptionRepository.save(subscription)
     fun findAll(): List<Subscription> = subscriptionRepository.findAll()
-    fun delete(id: UUID) = subscriptionRepository.deleteById(id)
+    //fun delete(id: UUID) = subscriptionRepository.deleteById(id)
 
 
     fun subscribe(user: User, group: Group): Boolean {

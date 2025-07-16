@@ -1,5 +1,6 @@
 package org.example.bot.sender
 
+import org.example.storage.model.ScheduledNotification
 import org.example.storage.model.Template
 import org.example.storage.model.User
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
@@ -30,4 +31,23 @@ class NotificationSender {
         }
         return result
     }
+
+    fun sendScheduledNotification(
+        sender: AbsSender,
+        notification: ScheduledNotification
+    ) {
+        val message = applyTemplate(notification.template, notification.event.payload)
+
+        // отправка в группы
+        if (notification.repeatCountGroups > 0) {
+            val groupChatIds = notification.targetGroups.mapNotNull { it.chatId?.toLongOrNull() }
+            sendToGroups(sender, groupChatIds, message)
+        }
+
+        // отправка пользователям
+        if (notification.repeatCountUsers > 0) {
+            sendToUsers(sender, notification.targetUsers, message)
+        }
+    }
+
 }

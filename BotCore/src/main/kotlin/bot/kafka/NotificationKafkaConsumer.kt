@@ -38,30 +38,28 @@ class NotificationKafkaConsumer(
             return
         }
 
-        if (group.chatId == null) {
-            // 🔹 Глобальная группа — отправляем в тот чат, откуда пришла команда
-            val chatId = message.chatId?.toString()?.toLongOrNull()
-            if (chatId == null) {
-                println("❌ Некорректный chatId для глобальной группы: ${message.chatId}")
-                return
+        // 🔹 Отправка в групповой чат
+        if (message.sendToGroup) {
+            val chatId = group.chatId ?: message.chatId
+            val resolvedChatId = chatId?.toLongOrNull()
+            if (resolvedChatId != null) {
+                notificationSender.sendToGroups(absSender, listOf(resolvedChatId), message.text)
+            } else {
+                println("⚠️ Не удалось определить chatId для отправки в группу: ${message.chatId}")
             }
-
-            notificationSender.sendToGroups(absSender, listOf(chatId), message.text)
-
-        } else {
-            // 🔸 Кастомная группа — отправляем всем подписанным пользователям
-            val users = subscriptionService.findUsersByGroup(group)
-            val userIds = users.mapNotNull { it.telegramId?.toString()?.toLongOrNull() }
-
-            if (userIds.isEmpty()) {
-                println("⚠ У группы '${group.name}' нет подписчиков")
-                return
-            }
-
-            notificationSender.sendToGroups(absSender, userIds, message.text)
         }
 
+        // 🔸 Отправка пользователям
+        if (message.sendToUsers) {
+            val users = subscriptionService.findUsersByGroup(group)
+            if (users.isEmpty()) {
+                println("⚠ У группы '${group.name}' нет подписчиков")
+            } else {
+                notificationSender.sendToUsers(absSender, users, message.text)
+            }
+        }
     }
+
 
 
 }

@@ -16,9 +16,12 @@ fun ScheduledNotification.toMessage(): NotificationMessage {
         type = this.event.type.name,
         text = text,
         groupName = groupName,
-        chatId = resolvedChatId
+        chatId = resolvedChatId,
+        sendToGroup = this.repeatCountGroups > 0,
+        sendToUsers = this.repeatCountUsers > 0
     )
 }
+
 
 
 

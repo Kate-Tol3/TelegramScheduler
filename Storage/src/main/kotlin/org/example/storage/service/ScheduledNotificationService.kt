@@ -22,39 +22,43 @@ class ScheduledNotificationService(
     fun create(
         template: Template,
         eventTime: LocalDateTime,
-        repeatCount: Int,
         repeatIntervalMinutes: Int,
         event: Event,
         group: Group,
-        users: Set<User>
+        users: Set<User>,
+        repeatCountUsers: Int,
+        repeatCountGroups: Int
     ): ScheduledNotification {
+
+        // 🔒 Валидация параметров
+        require(repeatCountUsers >= 0) { "repeatCountUsers не может быть меньше 0" }
+        require(repeatCountGroups >= 0) { "repeatCountGroups не может быть меньше 0" }
+
+        val hasRepeats = repeatCountUsers > 0 || repeatCountGroups > 0
+        if (hasRepeats && repeatIntervalMinutes <= 0) {
+            throw IllegalArgumentException("repeatIntervalMinutes должен быть больше 0 при наличии повторов")
+        }
+
         val notification = ScheduledNotification(
             template = template,
             event = event,
             eventTime = eventTime,
-            repeatCount = repeatCount,
             repeatIntervalMinutes = repeatIntervalMinutes,
             targetGroups = setOf(group),
-            targetUsers = users
+            targetUsers = users,
+            repeatCountUsers = repeatCountUsers,
+            repeatCountGroups = repeatCountGroups,
+            totalRepeatCountUsers = repeatCountUsers,
+            totalRepeatCountGroups = repeatCountGroups
         )
+
         return scheduledNotificationRepository.save(notification)
     }
 
+
+
     fun getDueNotificationsWithTargets(now: LocalDateTime): List<ScheduledNotification> {
         return scheduledNotificationRepository.findDueWithTargets(now)
-    }
-
-
-
-
-    fun decreaseRepeatOrRemove(notification: ScheduledNotification) {
-        if (notification.repeatCount > 1) {
-            notification.repeatCount -= 1
-            notification.eventTime = notification.eventTime.plusMinutes(notification.repeatIntervalMinutes.toLong())
-            save(notification)
-        } else {
-            delete(notification.id!!)
-        }
     }
 
     fun findAllWithUsers(): List<ScheduledNotification> =
@@ -68,10 +72,14 @@ class ScheduledNotificationService(
             template = existing.template,
             event = existing.event,
             eventTime = existing.eventTime,
-            repeatCount = existing.repeatCount,
             repeatIntervalMinutes = existing.repeatIntervalMinutes,
+            totalRepeatCountGroups = existing.totalRepeatCountGroups,
+            totalRepeatCountUsers = existing.totalRepeatCountUsers,
+            repeatCountGroups = existing.repeatCountGroups,
+            repeatCountUsers = existing.repeatCountUsers,
             targetGroups = existing.targetGroups,
-            targetUsers = newUsers
+            targetUsers = newUsers,
+            dispatched = existing.dispatched
         )
 
         scheduledNotificationRepository.save(updated)
@@ -81,29 +89,24 @@ class ScheduledNotificationService(
         return scheduledNotificationRepository.findAllByEventTimeBeforeAndDispatchedFalse(now)
     }
 
-//    fun markAsDispatched(notifications: List<ScheduledNotification>) {
-//        notifications.forEach { it.dispatched = true }
-//        scheduledNotificationRepository.saveAll(notifications)
-//    }
-
     fun markAsDispatched(notifications: List<ScheduledNotification>) {
         notifications.forEach { notification ->
-            if (notification.repeatCount > 1 && notification.repeatIntervalMinutes > 0) {
-                // Повторяем: уменьшаем счётчик и сдвигаем время
-                notification.repeatCount -= 1
+            if (notification.repeatCountGroups > 0) {
+                notification.repeatCountGroups -= 1
+            }
+            if (notification.repeatCountUsers > 0) {
+                notification.repeatCountUsers -= 1
+            }
+
+            val stillNeeded = notification.repeatCountGroups > 0 || notification.repeatCountUsers > 0
+
+            if (stillNeeded) {
                 notification.eventTime = notification.eventTime.plusMinutes(notification.repeatIntervalMinutes.toLong())
             } else {
-                // Повторов не будет — помечаем как отправленное
                 notification.dispatched = true
             }
         }
 
-        // Сохраняем изменения
         scheduledNotificationRepository.saveAll(notifications)
     }
-
-
-
-
-
 }

@@ -11,6 +11,10 @@ interface GroupRepository : JpaRepository<Group, UUID> {
 
     fun findByNameAndChatId(name: String, chatId: String?): Group?
 
+    fun findByChatId(chatId: String): Group?
+
+    fun findAllByName(name: String): List<Group>
+
     @Query("SELECT g FROM Group g WHERE g.name = :name AND g.chatId IS NULL")
     fun findGlobalByName(@Param("name") name: String): Group?
 }
