@@ -1,3 +1,5 @@
+// ✅ ListGroupsCommand: разделение групп на локальные и глобальные
+
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
@@ -14,12 +16,24 @@ class ListGroupsCommand(
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val chatId = chat.id.toString()
         val groups = groupService.findAll()
-        val messageText = if (groups.isEmpty()) {
-            "Пока нет доступных групп."
-        } else {
-            "Доступные группы:\n" + groups.joinToString("\n") { "- ${it.name}" }
+        if (groups.isEmpty()) {
+            sender.execute(SendMessage(chatId, "Пока нет доступных групп."))
+            return
         }
 
-        sender.execute(SendMessage(chatId, messageText))
+        val (globalGroups, localGroups) = groups.partition { it.chatId == null }
+
+        val builder = StringBuilder()
+        if (localGroups.isNotEmpty()) {
+            builder.append("📍 Локальные группы:")
+            localGroups.forEach { builder.append("\n- ${it.name}") }
+            builder.append("\n\n")
+        }
+        if (globalGroups.isNotEmpty()) {
+            builder.append("🌐 Глобальные группы:")
+            globalGroups.forEach { builder.append("\n- ${it.name}") }
+        }
+
+        sender.execute(SendMessage(chatId, builder.toString().trim()))
     }
 }

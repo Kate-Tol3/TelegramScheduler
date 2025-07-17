@@ -12,7 +12,7 @@ class GroupInitializer(private val groupService: GroupService) {
         val defaultNames = listOf("backend", "frontend", "devops", "design", "all")
         for (name in defaultNames) {
             if (groupService.findByName(name, null) == null) {
-                groupService.createGroup(name)
+                groupService.createGroup(name, description = "Глобальная группа $name")
             }
         }
     }

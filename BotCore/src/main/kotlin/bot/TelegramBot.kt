@@ -29,26 +29,20 @@ class TelegramBot(
 
     @PostConstruct
     fun registerCommands() {
-        register(StartCommand())
+        register(StartCommand(groupService, subscriptionService, userService))
         register(HelpCommand())
         register(ListTemplatesCommand(templateService))
         register(SubscribeCommand(userService, groupService, subscriptionService))
         register(UnsubscribeCommand(userService, groupService, subscriptionService))
         register(MySubscriptionsCommand(userService, subscriptionService))
         register(ListGroupsCommand(groupService))
-        register(CreateGroupCommand(groupService))
-        register(NotifyImmediateCommand(eventService, templateService, userService, notificationSender))
-        register(
-            NotifyScheduleCommand(
-                eventService,
-                templateService,
-                scheduledNotificationService,
-                groupService,
-            )
-        )
-        register(AddTemplateCommand(templateService))
-        register(DeleteGroupCommand(groupService))
+        register(CreateGroupCommand(groupService, subscriptionService, userService))
+        register(NotifyImmediateCommand(eventService, templateService, userService, groupService, subscriptionService, notificationSender))
+        register(NotifyScheduleCommand(eventService, templateService, scheduledNotificationService, groupService, userService, subscriptionService))
+//        register(AddTemplateCommand(templateService))
+        register(DeleteGroupCommand(groupService, subscriptionService))
         register(SubscribeAllCommand(userService, groupService, subscriptionService))
+        register(MyChatsCommand(groupService))
     }
 
     override fun processNonCommandUpdate(update: Update) {
@@ -56,7 +50,7 @@ class TelegramBot(
         val chat = message.chat
         val chatId = chat.id.toString()
 
-        // ✅ Только если это групповой чат
+        // 🟢 Групповой чат — создать группу и подписать админов
         if (chat.isGroupChat || chat.isSuperGroupChat) {
             val groupName = chat.title ?: "группа-${chatId.takeLast(6)}"
             val existing = groupService.findByName(groupName, chatId)
@@ -84,10 +78,10 @@ class TelegramBot(
             }
         }
 
-        // Не команда
         val text = message.text ?: return
         if (!text.startsWith("/")) {
             execute(SendMessage(chatId, "Неизвестная команда. Используйте /help для списка команд."))
         }
     }
+
 }

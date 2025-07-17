@@ -1,3 +1,5 @@
+// ✅ Обновлённый NotifyScheduleCommand: уведомление создаётся только если отправитель подписан на группу
+
 package org.example.bot.commands
 
 import org.example.storage.model.EventType
@@ -16,7 +18,9 @@ class NotifyScheduleCommand(
     private val eventService: EventService,
     private val templateService: TemplateService,
     private val scheduledNotificationService: ScheduledNotificationService,
-    private val groupService: GroupService
+    private val groupService: GroupService,
+    private val userService: UserService,
+    private val subscriptionService: SubscriptionService,
 ) : BotCommand("notify_schedule", "Запланировать уведомление") {
 
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
@@ -30,9 +34,6 @@ class NotifyScheduleCommand(
                     ⚠️ Недостаточно аргументов. 
                     Формат:
                     /notify_schedule <CALL|MR|RELEASE> <ссылка> <время начала> <место...> <дата> <время> <описание...> <повторы в ЛС> <повторы в группу> <интервал> [группа]
-                    
-                    Пример:
-                    /notify_schedule CALL https://zoom.us 14:00 Zoom Кабинет 402 17.07.2025 13:45 Архитектура обсуждение 2 1 5 команда-разработка
                     """.trimIndent()
                 )
             )
@@ -90,41 +91,26 @@ class NotifyScheduleCommand(
                 return
             }
 
-            val event = eventService.createEvent(
-                type = eventType,
-                payload = mapOf(
-                    "link" to link,
-                    "place" to place,
-                    "time" to startTime,
-                    "description" to description,
-                    "originChatId" to chatId
-                )
-            )
+            val dbUser = userService.resolveUser(user)
 
             val group = if (groupName != null) {
                 groupService.findByName(groupName, chatId)
                     ?: groupService.findByName(groupName, null)
                     ?: run {
                         if (chat.isUserChat) {
-                            val candidateGroups = groupService.findAllByName(groupName)
-                            for (candidate in candidateGroups) {
+                            val candidates = groupService.findAllByName(groupName)
+                            for (candidate in candidates) {
                                 val targetChatId = candidate.chatId
                                 if (targetChatId != null) {
                                     try {
                                         val admins = sender.execute(GetChatAdministrators(targetChatId))
                                         val isAdmin = admins.any { it.user.id == user.id }
-                                        if (isAdmin) {
-                                            return@run candidate
-                                        }
-                                    } catch (e: Exception) {
-                                        sender.execute(SendMessage(chatId, "⚠️ Не удалось проверить админа в '$targetChatId': ${e.message}"))
-                                        return
-                                    }
+                                        if (isAdmin) return@run candidate
+                                    } catch (_: Exception) { }
                                 }
                             }
                         }
-
-                        sender.execute(SendMessage(chatId, "❌ Группа '$groupName' не найдена или вы не являетесь её админом"))
+                        sender.execute(SendMessage(chatId, "❌ Группа '$groupName' не найдена или вы не админ"))
                         return
                     }
             } else {
@@ -135,8 +121,24 @@ class NotifyScheduleCommand(
                 )
             }
 
+            val isSenderSubscribed = subscriptionService.findUsersByGroup(group)
+                .any { it.telegramId == user.id }
 
+            if (!isSenderSubscribed) {
+                sender.execute(SendMessage(chatId, "❌ Вы не подписаны на группу '${group.name}'. Уведомление не создано."))
+                return
+            }
 
+            val event = eventService.createEvent(
+                type = eventType,
+                payload = mapOf(
+                    "link" to link,
+                    "place" to place,
+                    "time" to startTime,
+                    "description" to description,
+                    "originChatId" to chatId
+                )
+            )
 
             scheduledNotificationService.create(
                 template = template,

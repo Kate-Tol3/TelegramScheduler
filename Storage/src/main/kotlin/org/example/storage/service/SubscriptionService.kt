@@ -44,5 +44,11 @@ class SubscriptionService(private val subscriptionRepository: SubscriptionReposi
         return subscriptionRepository.findByGroup(group).map { it.user }.distinct()
     }
 
+    fun findUsersByGroupNameAndChatId(groupName: String, chatId: String?, groupService: GroupService): List<User> {
+        val group = groupService.findByName(groupName, chatId) ?: return emptyList()
+        return findUsersByGroup(group)
+    }
+
+
 
 }

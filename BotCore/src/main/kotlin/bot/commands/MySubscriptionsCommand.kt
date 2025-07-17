@@ -1,3 +1,5 @@
+// ✅ MySubscriptionsCommand: разделение подписок на глобальные и локальные
+
 package org.example.bot.commands
 
 import org.example.storage.service.SubscriptionService
@@ -16,14 +18,28 @@ class MySubscriptionsCommand(
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val chatId = chat.id.toString()
         val dbUser = userService.resolveUser(user)
-        val subscriptions = subscriptionService.findByUser(dbUser)
+        val allSubscriptions = subscriptionService.findByUser(dbUser)
 
-        val messageText = if (subscriptions.isEmpty()) {
-            "Вы пока не подписаны ни на одну группу."
-        } else {
-            "Вы подписаны на группы:\n" + subscriptions.joinToString("\n") { "- ${it.groupName}" }
+        val global = allSubscriptions.filter { it.group.chatId == null }
+        val local = allSubscriptions.filter { it.group.chatId == chatId }
+
+        if (global.isEmpty() && local.isEmpty()) {
+            sender.execute(SendMessage(chatId, "Вы пока не подписаны ни на одну группу."))
+            return
         }
 
-        sender.execute(SendMessage(chatId, messageText))
+        val builder = StringBuilder("Ваши подписки:")
+
+        if (local.isNotEmpty()) {
+            builder.append("\n\n📍 Локальные:")
+            local.forEach { builder.append("\n- ${it.groupName}") }
+        }
+
+        if (global.isNotEmpty()) {
+            builder.append("\n\n🌐 Глобальные:")
+            global.forEach { builder.append("\n- ${it.groupName}") }
+        }
+
+        sender.execute(SendMessage(chatId, builder.toString()))
     }
 }

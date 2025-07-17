@@ -27,27 +27,27 @@ class NotificationSender {
     fun applyTemplate(template: Template, placeholders: Map<String, String>): String {
         var result = template.text
         placeholders.forEach { (key, value) ->
-            result = result.replace("{{${key}}}", value)
+            result = result.replace("{$key}", value) // 🔄 заменили {{key}} на {key}
         }
         return result
     }
 
-    fun sendScheduledNotification(
-        sender: AbsSender,
-        notification: ScheduledNotification
-    ) {
-        val message = applyTemplate(notification.template, notification.event.payload)
-
-        // отправка в группы
-        if (notification.repeatCountGroups > 0) {
-            val groupChatIds = notification.targetGroups.mapNotNull { it.chatId?.toLongOrNull() }
-            sendToGroups(sender, groupChatIds, message)
-        }
-
-        // отправка пользователям
-        if (notification.repeatCountUsers > 0) {
-            sendToUsers(sender, notification.targetUsers, message)
-        }
-    }
+//    fun sendScheduledNotification(
+//        sender: AbsSender,
+//        notification: ScheduledNotification
+//    ) {
+//        val message = applyTemplate(notification.template, notification.event.payload)
+//
+//        // отправка в группы
+//        if (notification.repeatCountGroups > 0) {
+//            val groupChatIds = notification.targetGroups.mapNotNull { it.chatId?.toLongOrNull() }
+//            sendToGroups(sender, groupChatIds, message)
+//        }
+//
+//        // отправка пользователям
+//        if (notification.repeatCountUsers > 0) {
+//            sendToUsers(sender, notification.targetUsers, message)
+//        }
+//    }
 
 }

@@ -1,3 +1,5 @@
+// ✅ Обновлённый класс SubscribeCommand — подписка на локальные и глобальные группы
+
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
@@ -28,15 +30,18 @@ class SubscribeCommand(
             return
         }
 
-        val groupName = arguments.joinToString(" ")
+        val groupName = arguments.joinToString(" ").trim()
         val dbUser = userService.resolveUser(user)
-        val dbGroup = groupService.findByName(groupName, chatId)
+
+        // 🟢 Сначала пробуем найти локальную группу (по chatId), затем глобальную (chatId = null)
+        val dbGroup = groupService.findByName(groupName, chat.id.toString())
+            ?: groupService.findByName(groupName, null)
 
         if (dbGroup == null) {
             sender.execute(
                 SendMessage(
                     chatId,
-                    "Группа '$groupName' не найдена. Хотите её создать? Напишите /create_group $groupName"
+                    "❌ Группа '$groupName' не найдена. Хотите её создать? Напишите /create_group $groupName"
                 )
             )
             return
@@ -44,9 +49,9 @@ class SubscribeCommand(
 
         val subscribed = subscriptionService.subscribe(dbUser, dbGroup)
         val message = if (subscribed) {
-            "Вы успешно подписались на группу '$groupName'."
+            "✅ Вы успешно подписались на группу '$groupName'."
         } else {
-            "Вы уже подписаны на группу '$groupName'."
+            "⚠️ Вы уже подписаны на группу '$groupName'."
         }
 
         sender.execute(SendMessage(chatId, message))

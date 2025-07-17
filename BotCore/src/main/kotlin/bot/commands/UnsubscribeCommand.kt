@@ -1,3 +1,5 @@
+// ✅ Обновлённая команда UnsubscribeCommand — корректно обрабатывает локальные и глобальные группы
+
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
@@ -28,24 +30,25 @@ class UnsubscribeCommand(
             return
         }
 
-        val groupName = arguments.joinToString(" ")
+        val groupName = arguments.joinToString(" ").trim()
         val dbUser = userService.resolveUser(user)
+
+        // 🟢 Сначала ищем локальную группу, потом глобальную
         val dbGroup = groupService.findByName(groupName, chatId)
             ?: groupService.findByName(groupName, null)
 
         if (dbGroup == null) {
-            sender.execute(SendMessage(chatId, "Группа '$groupName' не найдена."))
+            sender.execute(SendMessage(chatId, "❌ Группа '$groupName' не найдена."))
             return
         }
 
         val unsubscribed = subscriptionService.unsubscribe(dbUser, dbGroup)
         val message = if (unsubscribed) {
-            "Вы успешно отписались от группы '$groupName'."
+            "✅ Вы успешно отписались от группы '$groupName'."
         } else {
-            "Вы не были подписаны на группу '$groupName'."
+            "⚠️ Вы не были подписаны на группу '$groupName'."
         }
 
         sender.execute(SendMessage(chatId, message))
     }
 }
-

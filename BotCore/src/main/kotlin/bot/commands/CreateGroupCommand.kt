@@ -1,6 +1,10 @@
+// ✅ Обновлённый CreateGroupCommand: автор автоматически подписывается на созданную группу
+
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
+import org.example.storage.service.SubscriptionService
+import org.example.storage.service.UserService
 import org.telegram.telegrambots.extensions.bots.commandbot.commands.BotCommand
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Chat
@@ -8,7 +12,9 @@ import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.bots.AbsSender
 
 class CreateGroupCommand(
-    private val groupService: GroupService
+    private val groupService: GroupService,
+    private val subscriptionService: SubscriptionService,
+    private val userService: UserService
 ) : BotCommand("create_group", "Создать новую группу") {
 
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
@@ -35,9 +41,11 @@ class CreateGroupCommand(
             return
         }
 
-        groupService.createGroup(name = groupName, chatId = chatId, description = description)
+        val createdGroup = groupService.createGroup(name = groupName, chatId = chatId, description = description)
 
-        sender.execute(SendMessage(chatId, "Группа '$groupName' успешно создана.\nОписание: $description\n\nТеперь вы можете подписаться на неё с помощью /subscribe $groupName"))
+        val dbUser = userService.resolveUser(user)
+        subscriptionService.subscribe(dbUser, createdGroup)
+
+        sender.execute(SendMessage(chatId, "Группа '$groupName' успешно создана и вы автоматически подписаны на неё.\nОписание: $description"))
     }
 }
-
