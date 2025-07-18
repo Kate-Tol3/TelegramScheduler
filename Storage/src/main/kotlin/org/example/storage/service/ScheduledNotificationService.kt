@@ -24,7 +24,7 @@ class ScheduledNotificationService(
         eventTime: LocalDateTime,
         repeatIntervalMinutes: Int,
         event: Event,
-        group: Group,
+        group: Group?, // ← теперь опционально
         users: Set<User>,
         repeatCountUsers: Int,
         repeatCountGroups: Int
@@ -44,7 +44,7 @@ class ScheduledNotificationService(
             event = event,
             eventTime = eventTime,
             repeatIntervalMinutes = repeatIntervalMinutes,
-            targetGroups = setOf(group),
+            targetGroups = if (group != null) setOf(group) else emptySet(),
             targetUsers = users,
             repeatCountUsers = repeatCountUsers,
             repeatCountGroups = repeatCountGroups,
@@ -54,6 +54,7 @@ class ScheduledNotificationService(
 
         return scheduledNotificationRepository.save(notification)
     }
+
 
 
 

@@ -1,5 +1,3 @@
-// ✅ ListGroupsCommand: разделение групп на локальные и глобальные
-
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
@@ -15,25 +13,31 @@ class ListGroupsCommand(
 
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val chatId = chat.id.toString()
-        val groups = groupService.findAll()
-        if (groups.isEmpty()) {
+        val allGroups = groupService.findAll()
+
+        val globalGroups = allGroups.filter { it.chatId == null }
+        val localGroups = allGroups.filter { it.chatId == chatId }
+
+        if (globalGroups.isEmpty() && localGroups.isEmpty()) {
             sender.execute(SendMessage(chatId, "Пока нет доступных групп."))
             return
         }
 
-        val (globalGroups, localGroups) = groups.partition { it.chatId == null }
-
         val builder = StringBuilder()
+
         if (localGroups.isNotEmpty()) {
-            builder.append("📍 Локальные группы:")
-            localGroups.forEach { builder.append("\n- ${it.name}") }
-            builder.append("\n\n")
-        }
-        if (globalGroups.isNotEmpty()) {
-            builder.append("🌐 Глобальные группы:")
-            globalGroups.forEach { builder.append("\n- ${it.name}") }
+            builder.appendLine("📍 *Ваши локальные группы:*")
+            localGroups.forEach { builder.appendLine("- ${it.name}") }
+            builder.appendLine()
         }
 
-        sender.execute(SendMessage(chatId, builder.toString().trim()))
+        if (globalGroups.isNotEmpty()) {
+            builder.appendLine("🌐 *Глобальные группы:*")
+            globalGroups.forEach { builder.appendLine("- ${it.name}") }
+        }
+
+        sender.execute(SendMessage(chatId, builder.toString().trim()).apply {
+            parseMode = "Markdown"
+        })
     }
 }

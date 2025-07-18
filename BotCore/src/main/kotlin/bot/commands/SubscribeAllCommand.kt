@@ -2,76 +2,107 @@ package org.example.bot.commands
 
 import org.example.storage.service.*
 import org.telegram.telegrambots.extensions.bots.commandbot.commands.BotCommand
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Chat
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.bots.AbsSender
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton
 
 class SubscribeAllCommand(
     private val userService: UserService,
     private val groupService: GroupService,
     private val subscriptionService: SubscriptionService
-) : BotCommand("subscribe_all", "Подписать всех участников чата (доступно только админам)") {
+) : BotCommand("subscribe_all", "Подписать всех участников чата или отправить кнопку подписки") {
 
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val isPrivate = chat.isUserChat
-        val chatId = if (isPrivate) {
+        val chatId = chat.id.toString()
+        val targetChatId: String
+
+        if (isPrivate) {
+            // Вызов из лички — ожидаем ссылку на группу
             if (arguments.isEmpty()) {
-                sender.execute(
-                    SendMessage(
-                        chat.id.toString(),
-                        "❌ Укажите ссылку на группу. Пример:\n/subscribe_all https://t.me/groupname"
-                    )
-                )
+                sender.execute(SendMessage(chatId, "❌ Укажите ссылку на группу. Пример:\n/subscribe_all https://t.me/groupname"))
                 return
             }
-            // Преобразуем ссылку https://t.me/groupname в @groupname
+
             val link = arguments[0].trim()
             if (!link.startsWith("https://t.me/")) {
-                sender.execute(SendMessage(chat.id.toString(), "❌ Неверный формат ссылки. Ожидается https://t.me/имя_группы"))
+                sender.execute(SendMessage(chatId, "❌ Неверный формат ссылки. Ожидается https://t.me/имя_группы"))
                 return
             }
-            "@" + link.removePrefix("https://t.me/")
+
+            val suffix = link.removePrefix("https://t.me/")
+            if (suffix.startsWith("+")) {
+                sender.execute(SendMessage(chatId, "❗ Приватные группы не поддерживаются по ссылке.\nДобавьте бота в группу и вызовите эту команду *из самой группы*."))
+                return
+            }
+
+            targetChatId = "@$suffix"
         } else {
-            chat.id.toString()
+            // Вызов из самого группового чата
+            targetChatId = chatId
         }
 
-        // Проверка: админ ли вызывающий
+        // Проверяем, что пользователь — админ этой группы
         val isAdmin = try {
-            val admins = sender.execute(GetChatAdministrators(chatId))
+            val admins = sender.execute(GetChatAdministrators(targetChatId))
             admins.any { it.user.id == user.id }
         } catch (e: Exception) {
             false
         }
 
         if (!isAdmin) {
-            sender.execute(SendMessage(chat.id.toString(), "⛔ Только администратор указанного чата может выполнить эту команду."))
+            sender.execute(SendMessage(chatId, "⛔ Только администратор указанного чата может выполнить эту команду."))
             return
         }
 
-        // Группа должна быть зарегистрирована
-        val group = groupService.findByChatId(chatId)
+        val group = groupService.findByChatId(targetChatId)
         if (group == null) {
-            sender.execute(SendMessage(chat.id.toString(), "⚠️ Группа с chatId = $chatId не найдена."))
+            sender.execute(SendMessage(chatId, "⚠️ Группа с chatId = $targetChatId не найдена. Убедитесь, что бот уже был добавлен в неё."))
             return
         }
 
-        try {
-            val members = sender.execute(GetChatAdministrators(chatId))
-                .map { it.user }
-                .filter { !it.isBot }
+        if (!isPrivate) {
+            // Вызов из группы — подписываем всех админов
+            try {
+                val admins = sender.execute(GetChatAdministrators(chatId))
+                    .map { it.user }
+                    .filter { !it.isBot }
 
-            var count = 0
-            for (tgUser in members) {
-                val userModel = userService.resolveUser(tgUser)
-                val subscribed = subscriptionService.subscribe(userModel, group)
-                if (subscribed) count++
+                var count = 0
+                for (tgUser in admins) {
+                    val userModel = userService.resolveUser(tgUser)
+                    if (subscriptionService.subscribe(userModel, group)) count++
+                }
+
+                sender.execute(SendMessage(chatId, "✅ Подписано $count администраторов чата '${group.name}'"))
+            } catch (e: Exception) {
+                sender.execute(SendMessage(chatId, "❌ Ошибка при подписке: ${e.message}"))
             }
+        } else {
+            // Вызов из лички — отправляем кнопку в сам чат
+            val button = InlineKeyboardButton.builder()
+                .text("📥 Подписаться на группу ${group.name}")
+                .callbackData("subscribe_group:${group.id}")
+                .build()
 
-            sender.execute(SendMessage(chat.id.toString(), "✅ Подписано $count участников чата '${group.name}'"))
-        } catch (e: Exception) {
-            sender.execute(SendMessage(chat.id.toString(), "❌ Ошибка при подписке: ${e.message}"))
+            val keyboard = InlineKeyboardMarkup(listOf(listOf(button)))
+
+            try {
+                sender.execute(
+                    SendMessage(targetChatId, "👥 Чтобы подписаться на группу *${group.name}*, нажмите кнопку ниже.")
+                        .apply {
+                            enableMarkdown(true)
+                            replyMarkup = keyboard
+                        }
+                )
+                sender.execute(SendMessage(chatId, "✅ Кнопка подписки отправлена в чат."))
+            } catch (e: Exception) {
+                sender.execute(SendMessage(chatId, "❌ Не удалось отправить сообщение в чат: ${e.message}"))
+            }
         }
     }
 }
