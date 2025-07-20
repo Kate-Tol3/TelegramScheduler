@@ -3,7 +3,6 @@ package org.example.bot.commands
 import org.example.storage.model.EventType
 import org.example.storage.service.*
 import org.telegram.telegrambots.extensions.bots.commandbot.commands.BotCommand
-import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Chat
 import org.telegram.telegrambots.meta.api.objects.User
@@ -34,10 +33,17 @@ class NotifyScheduleCommand(
         }
 
         try {
-            val eventType = EventType.valueOf(arguments[0].uppercase())
+            val eventType = try {
+                EventType.valueOf(arguments[0].uppercase())
+            } catch (e: Exception) {
+                sender.execute(SendMessage(chatId, "❌ Неверный тип события. CALL, MR, RELEASE"))
+                return
+            }
+
             val link = arguments[1]
             val startTime = arguments[2]
 
+            // Поиск индексов даты и времени
             val dateIndex = arguments.indexOfFirst { it.matches(Regex("\\d{2}\\.\\d{2}\\.\\d{4}")) }
             val timeIndex = dateIndex + 1
             if (dateIndex == -1 || timeIndex >= arguments.size || !arguments[timeIndex].matches(Regex("\\d{2}:\\d{2}"))) {
@@ -54,21 +60,21 @@ class NotifyScheduleCommand(
                 return
             }
 
-            val argsList = arguments.toList()
-            val place = argsList.subList(3, dateIndex).joinToString(" ").ifBlank { "Место не указано" }
+            val place = arguments.slice(3 until dateIndex).joinToString(" ").ifBlank { "Место не указано" }
+            val dbUser = userService.resolveUser(user)
 
+            // Разбор конца команды
             val tail = arguments.drop(timeIndex + 1).toMutableList()
 
-            // Предполагаем, что если есть хотя бы 4 элемента — могут быть повторы и группа
-            var repeatUsers: Int? = null
-            var repeatGroups: Int? = null
-            var interval: Int? = null
+            var repeatUsers = 1
+            var repeatGroups = 0
+            var interval = 0
             var groupName: String? = null
 
             if (tail.size >= 4 && tail.takeLast(4).dropLast(1).all { it.matches(Regex("\\d+")) }) {
-                repeatUsers = tail.removeAt(tail.lastIndex - 3).toIntOrNull()
-                repeatGroups = tail.removeAt(tail.lastIndex - 2).toIntOrNull()
-                interval = tail.removeAt(tail.lastIndex - 1).toIntOrNull()
+                repeatUsers = tail.removeAt(tail.lastIndex - 3).toIntOrNull() ?: 1
+                repeatGroups = tail.removeAt(tail.lastIndex - 2).toIntOrNull() ?: 0
+                interval = tail.removeAt(tail.lastIndex - 1).toIntOrNull() ?: 0
                 groupName = tail.removeLast()
             }
 
@@ -80,39 +86,31 @@ class NotifyScheduleCommand(
                 return
             }
 
-            val dbUser = userService.resolveUser(user)
-
-            val group = if (groupName != null) {
-                groupService.findByName(groupName, chatId)
-                    ?: groupService.findByName(groupName, null)
-                    ?: run {
-                        if (chat.isUserChat) {
-                            val candidates = groupService.findAllByName(groupName)
-                            for (candidate in candidates) {
-                                val admins = candidate.chatId?.let {
-                                    try {
-                                        sender.execute(GetChatAdministrators(it))
-                                    } catch (_: Exception) { null }
-                                }
-                                if (admins?.any { it.user.id == user.id } == true) {
-                                    return@run candidate
-                                }
-                            }
-                        }
-                        sender.execute(SendMessage(chatId, "❌ Группа '$groupName' не найдена или вы не админ"))
-                        return
-                    }
-            } else null
+            val group = groupName?.let {
+                groupService.findByName(it, chatId, dbUser)
+            }
 
             if (group != null) {
+                // Проверка подписки
                 val isSenderSubscribed = subscriptionService.findUsersByGroup(group)
                     .any { it.telegramId == user.id }
+
                 if (!isSenderSubscribed) {
                     sender.execute(SendMessage(chatId, "❌ Вы не подписаны на группу '${group.name}'. Уведомление не создано."))
                     return
                 }
-                if (repeatUsers == null || repeatGroups == null || interval == null) {
-                    sender.execute(SendMessage(chatId, "⚠️ Укажите повторы и интервал при отправке в группу."))
+
+                // Проверка прав на отправку в приватную группу
+                val isOwner = group.owner?.telegramId == user.id
+                val isNotifier = dbUser in group.notifiers
+                if (group.isPrivate && !isOwner && !isNotifier) {
+                    sender.execute(SendMessage(chatId, "❌ Только владелец или назначенные отправители могут отправлять уведомления в группу '${group.name}'"))
+                    return
+                }
+
+                // Проверка повторов
+                if (repeatUsers <= 0 && repeatGroups <= 0) {
+                    sender.execute(SendMessage(chatId, "⚠️ Укажите повторы, если хотите отправлять в группу."))
                     return
                 }
             }
@@ -131,9 +129,9 @@ class NotifyScheduleCommand(
             scheduledNotificationService.create(
                 template = template,
                 eventTime = eventTime,
-                repeatIntervalMinutes = interval ?: 0,
-                repeatCountUsers = repeatUsers ?: 1,
-                repeatCountGroups = repeatGroups ?: 0,
+                repeatIntervalMinutes = interval,
+                repeatCountUsers = repeatUsers,
+                repeatCountGroups = repeatGroups,
                 event = event,
                 group = group,
                 users = if (group == null) setOf(dbUser) else emptySet()

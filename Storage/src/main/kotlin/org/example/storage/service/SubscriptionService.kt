@@ -3,52 +3,86 @@ package org.example.storage.service
 import org.example.storage.model.Group
 import org.example.storage.model.Subscription
 import org.example.storage.model.User
-import org.example.storage.repository.*
+import org.example.storage.repository.GroupRepository
+import org.example.storage.repository.SubscriptionRepository
 import org.springframework.stereotype.Service
-import java.util.*
 
 @Service
-class SubscriptionService(private val subscriptionRepository: SubscriptionRepository) {
-    //fun findById(id: UUID): Subscription? = subscriptionRepository.findById(id).orElse(null)
-    //fun save(subscription: Subscription): Subscription = subscriptionRepository.save(subscription)
-    fun findAll(): List<Subscription> = subscriptionRepository.findAll()
-    //fun delete(id: UUID) = subscriptionRepository.deleteById(id)
+class SubscriptionService(
+    private val subscriptionRepository: SubscriptionRepository,
+    private val groupRepository: GroupRepository // ✅ добавлено
+) {
 
+    fun findAll(): List<Subscription> = subscriptionRepository.findAll()
 
     fun subscribe(user: User, group: Group): Boolean {
-        val existing = subscriptionRepository.findByUserAndGroup(user, group)
+        val loadedGroup = groupRepository.findByNameWithUsers(group.name, group.chatId)
+            ?: return false // если группа не найдена (должно быть редкостью)
+
+        println("📋 Проверка доступа к группе '${loadedGroup.name}'")
+        println("🔒 isPrivate: ${loadedGroup.isPrivate}")
+        println("👤 Пользователь: ${user.username} (id=${user.id})")
+        println("🧑‍🤝‍🧑 allowedUsers:")
+        loadedGroup.allowedUsers.forEach {
+            println("   - ${it.username} (id=${it.id})")
+        }
+        println("👑 Владелец: ${loadedGroup.owner?.username} (id=${loadedGroup.owner?.id})")
+
+        // 🔒 Проверка доступа
+        if (
+            loadedGroup.isPrivate &&
+            loadedGroup.allowedUsers.none { it.id == user.id } &&
+            loadedGroup.owner?.id != user.id
+        ) {
+            println("❌ Нет доступа: пользователь не найден среди allowedUsers и не является владельцем.")
+            return false
+        }
+
+
+
+        val existing = subscriptionRepository.findByUserAndGroup(user, loadedGroup)
         if (existing != null) return false
 
         val subscription = Subscription(
             user = user,
-            group = group,
-            groupName = group.name // ← вот здесь явно сохраняем
+            group = loadedGroup,
+            groupName = loadedGroup.name
         )
 
         subscriptionRepository.save(subscription)
         return true
     }
 
+
+
     fun unsubscribe(user: User, group: Group): Boolean {
         val existing = subscriptionRepository.findByUserAndGroup(user, group)
         return if (existing != null) {
             subscriptionRepository.delete(existing)
             true
-        } else {
-            false
-        }
+        } else false
     }
 
     fun findByUser(user: User): List<Subscription> = subscriptionRepository.findByUser(user)
+
+    /**
+     * ✅ Теперь метод загружает allowedUsers и корректно фильтрует подписчиков приватной группы
+     */
     fun findUsersByGroup(group: Group): List<User> {
         return subscriptionRepository.findByGroup(group).map { it.user }.distinct()
     }
 
-    fun findUsersByGroupNameAndChatId(groupName: String, chatId: String?, groupService: GroupService): List<User> {
-        val group = groupService.findByName(groupName, chatId) ?: return emptyList()
+
+    fun findUsersByGroupNameAndChatId(
+        groupName: String,
+        chatId: String?,
+        groupService: GroupService,
+        user: User
+    ): List<User> {
+        val group = groupService.findByName(groupName, chatId, user) ?: return emptyList()
         return findUsersByGroup(group)
     }
 
-
-
+    fun findByUserAndGroup(user: User, group: Group): Subscription? =
+        subscriptionRepository.findByUserAndGroup(user, group)
 }

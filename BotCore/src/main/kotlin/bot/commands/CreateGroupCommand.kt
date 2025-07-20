@@ -1,5 +1,3 @@
-// ✅ Обновлённый CreateGroupCommand: автор автоматически подписывается на созданную группу
-
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
@@ -21,7 +19,11 @@ class CreateGroupCommand(
         val chatId = chat.id.toString()
 
         if (arguments.isEmpty()) {
-            sender.execute(SendMessage(chatId, "Укажите название и описание группы: /create_group <group> ; <description>"))
+            sender.execute(
+                SendMessage(chatId, "Укажите название и описание группы:\n\n`/create_group <группа> ; <описание>`").apply {
+                    parseMode = "Markdown"
+                }
+            )
             return
         }
 
@@ -32,20 +34,37 @@ class CreateGroupCommand(
         val description = if (parts.size > 1) parts[1].trim() else ""
 
         if (groupName.isEmpty()) {
-            sender.execute(SendMessage(chatId, "Название группы не может быть пустым."))
+            sender.execute(SendMessage(chatId, "❗️Название группы не может быть пустым."))
             return
         }
 
-        if (groupService.findByName(groupName, chatId) != null) {
-            sender.execute(SendMessage(chatId, "Группа '$groupName' уже существует."))
+        val existingGroup = groupService.findByName(groupName, chatId, null)
+        if (existingGroup != null) {
+            sender.execute(SendMessage(chatId, "⚠️ Группа с названием '$groupName' уже существует в этом чате."))
             return
         }
-
-        val createdGroup = groupService.createGroup(name = groupName, chatId = chatId, description = description)
 
         val dbUser = userService.resolveUser(user)
-        subscriptionService.subscribe(dbUser, createdGroup)
 
-        sender.execute(SendMessage(chatId, "Группа '$groupName' успешно создана и вы автоматически подписаны на неё.\nОписание: $description"))
+        val newGroup = groupService.createGroup(
+            name = groupName,
+            chatId = chatId,
+            description = description,
+            isPrivate = false,
+            owner = dbUser,
+            allowedUsers = emptySet()
+        )
+
+        // ✅ Автоматическая подписка владельца
+        subscriptionService.subscribe(dbUser, newGroup)
+
+        println("✅ Создана локальная группа '${newGroup.name}' в чате $chatId владельцем ${dbUser.username}")
+        sender.execute(
+            SendMessage(chatId, """
+                ✅ Группа '${newGroup.name}' успешно создана.
+                ℹ️ Описание: $description
+                👤 Владелец: ${dbUser.username}
+            """.trimIndent())
+        )
     }
 }

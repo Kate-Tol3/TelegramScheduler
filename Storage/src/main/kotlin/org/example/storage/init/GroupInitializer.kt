@@ -11,8 +11,15 @@ class GroupInitializer(private val groupService: GroupService) {
     fun initDefaultGroups() {
         val defaultNames = listOf("backend", "frontend", "devops", "design", "all")
         for (name in defaultNames) {
-            if (groupService.findByName(name, null) == null) {
-                groupService.createGroup(name, description = "Глобальная группа $name")
+            val existing = groupService.findByNameWithUsers(name, null)
+            if (existing == null) {
+                groupService.createGroup(
+                    name = name,
+                    description = "Глобальная группа $name"
+                )
+                println("✅ Группа '$name' создана")
+            } else {
+                println("ℹ️ Группа '$name' уже существует")
             }
         }
     }

@@ -31,19 +31,51 @@ class TelegramBot(
 
     @PostConstruct
     fun registerCommands() {
+        // ✅ Общие
         register(StartCommand(groupService, subscriptionService, userService))
         register(HelpCommand())
-        register(ListTemplatesCommand(templateService))
+
+        // ✅ Работа с группами
+        register(CreateGroupCommand(groupService, subscriptionService, userService))
+        register(DeleteGroupCommand(groupService, subscriptionService, userService))
+        register(ListGroupsCommand(groupService, userService))
+
+        // ✅ Подписки
         register(SubscribeCommand(userService, groupService, subscriptionService))
         register(UnsubscribeCommand(userService, groupService, subscriptionService))
         register(MySubscriptionsCommand(userService, subscriptionService))
-        register(ListGroupsCommand(groupService))
-        register(CreateGroupCommand(groupService, subscriptionService, userService))
-        register(NotifyImmediateCommand(eventService, templateService, userService, groupService, subscriptionService, notificationSender))
-        register(NotifyScheduleCommand(eventService, templateService, scheduledNotificationService, groupService, userService, subscriptionService))
-        register(DeleteGroupCommand(groupService, subscriptionService))
-        register(SubscribeAllCommand(userService, groupService, subscriptionService))
-        register(MyChatsCommand(groupService))
+        register(SubscribeAllCommand(userService, groupService, subscriptionService)) // если используешь
+        register(MyChatsCommand(groupService)) // если реализована
+
+        // ✅ Доступ к приватным группам
+        register(GrantAccessCommand(userService, groupService))
+        register(RevokeAccessCommand(userService, groupService))
+        register(AllowedUsersCommand(groupService, userService))
+
+        // ✅ Шаблоны (если нужно)
+        register(ListTemplatesCommand(templateService)) // если реализована
+
+        // ✅ Уведомления
+        register(
+            NotifyImmediateCommand(
+                eventService,
+                templateService,
+                userService,
+                groupService,
+                subscriptionService,
+                notificationSender
+            )
+        )
+        register(
+            NotifyScheduleCommand(
+                eventService,
+                templateService,
+                scheduledNotificationService,
+                groupService,
+                userService,
+                subscriptionService
+            )
+        )
     }
 
     override fun processNonCommandUpdate(update: Update) {
@@ -59,7 +91,7 @@ class TelegramBot(
         // 🟢 Если это групповой чат — регистрируем его
         if (chat.isGroupChat || chat.isSuperGroupChat) {
             val groupName = chat.title ?: "группа-${chatId.takeLast(6)}"
-            val existing = groupService.findByName(groupName, chatId)
+            val existing = groupService.findByName(groupName, chatId, null) // ← исправлено
 
             if (existing == null) {
                 val group = groupService.createGroup(
@@ -83,6 +115,7 @@ class TelegramBot(
                 }
             }
         }
+
 
         val text = message.text ?: return
         if (!text.startsWith("/")) {

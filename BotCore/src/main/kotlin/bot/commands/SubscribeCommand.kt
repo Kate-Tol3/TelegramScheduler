@@ -1,5 +1,3 @@
-// ✅ Обновлённый класс SubscribeCommand — подписка на локальные и глобальные группы
-
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
@@ -17,43 +15,56 @@ class SubscribeCommand(
     private val subscriptionService: SubscriptionService
 ) : BotCommand("subscribe", "Подписаться на группу") {
 
-    override fun execute(
-        sender: AbsSender,
-        user: User,
-        chat: Chat,
-        arguments: Array<String>
-    ) {
+    override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val chatId = chat.id.toString()
 
         if (arguments.isEmpty()) {
-            sender.execute(SendMessage(chatId, "Пожалуйста, укажите название группы: /subscribe <group>"))
+            sender.execute(SendMessage(chatId, "⚠️ Укажите название группы: /subscribe <group>"))
             return
         }
 
         val groupName = arguments.joinToString(" ").trim()
         val dbUser = userService.resolveUser(user)
+        val contextChatId = if (chat.isUserChat) null else chatId
 
-        // 🟢 Сначала пробуем найти локальную группу (по chatId), затем глобальную (chatId = null)
-        val dbGroup = groupService.findByName(groupName, chat.id.toString())
-            ?: groupService.findByName(groupName, null)
+        println("🔍 Попытка подписки:")
+        println("👤 Пользователь: ${dbUser.username} (id=${dbUser.telegramId})")
+        println("💬 Название группы: $groupName")
+        println("💬 Откуда вызвано: chatId=$chatId, Тип: ${chat.type}")
 
-        if (dbGroup == null) {
-            sender.execute(
-                SendMessage(
-                    chatId,
-                    "❌ Группа '$groupName' не найдена. Хотите её создать? Напишите /create_group $groupName"
-                )
-            )
+        val group = groupService.findByName(groupName, contextChatId, dbUser)
+
+        if (group == null) {
+            sender.execute(SendMessage(chatId, "❌ Группа '${escape(groupName)}' не найдена или доступ к ней ограничен."))
             return
         }
 
-        val subscribed = subscriptionService.subscribe(dbUser, dbGroup)
-        val message = if (subscribed) {
-            "✅ Вы успешно подписались на группу '$groupName'."
-        } else {
-            "⚠️ Вы уже подписаны на группу '$groupName'."
+        println("🟢 Найдена группа '${group.name}' (chatId=${group.chatId}, isPrivate=${group.isPrivate})")
+
+        val hasAccess = when {
+            group.chatId == chatId -> true
+            group.chatId == null && !group.isPrivate -> true
+            group.chatId == null && group.isPrivate && group.allowedUsers.any { it.id == dbUser.id } -> true
+            else -> false
         }
 
-        sender.execute(SendMessage(chatId, message))
+        if (!hasAccess) {
+            sender.execute(SendMessage(chatId, "❌ У вас нет доступа к группе '${escape(group.name)}'"))
+            return
+        }
+
+        val subscribed = subscriptionService.subscribe(dbUser, group)
+        val result = if (subscribed) {
+            "✅ Вы успешно подписались на группу '${escape(group.name)}'."
+        } else {
+            "⚠️ Вы уже подписаны на группу '${escape(group.name)}'."
+        }
+
+        sender.execute(SendMessage(chatId, result))
+    }
+
+    private fun escape(text: String): String {
+        val charsToEscape = listOf('_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!')
+        return charsToEscape.fold(text) { acc, c -> acc.replace(c.toString(), "\\$c") }
     }
 }

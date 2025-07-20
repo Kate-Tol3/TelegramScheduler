@@ -10,9 +10,7 @@ import org.telegram.telegrambots.meta.bots.AbsSender
 class HelpCommand : BotCommand("help", "Список всех доступных команд") {
 
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
-        val userId = user.id
         val chatId = chat.id.toString()
-
         val isPrivate = chat.isUserChat
         val isGroup = chat.isGroupChat || chat.isSuperGroupChat
 
@@ -20,55 +18,51 @@ class HelpCommand : BotCommand("help", "Список всех доступных
         if (isGroup) {
             try {
                 val admins = sender.execute(GetChatAdministrators(chatId))
-                isAdminInGroup = admins.any { it.user.id == userId }
-            } catch (_: Exception) {}
+                isAdminInGroup = admins.any { it.user.id == user.id }
+            } catch (_: Exception) { }
         }
 
         val helpText = buildString {
-            appendLine("📖 *Доступные команды:*\n")
+            appendLine("📖 *Доступные команды:*")
 
-            // 📌 Общие
-            appendLine("▶️ `/start` — Начать работу с ботом")
-            appendLine("🆘 `/help` — Показать это меню")
+            appendLine("\n🟢 *Общие:*")
+            appendLine("• `/start` — Начать работу с ботом")
+            appendLine("• `/help` — Показать это меню")
 
-            // 🔔 Подписки
             appendLine("\n🔔 *Подписки:*")
-            appendLine("➕ `/subscribe <group>` — Подписка на уведомления по группе")
-            appendLine("➖ `/unsubscribe <group>` — Отписка от уведомлений по группе")
-            appendLine("📋 `/my_subscriptions` — Показать мои текущие подписки")
-            appendLine("🛡️ `/my_chats` — Показать чаты, где вы админ и бот присутствует")
-
+            appendLine("• `/subscribe <группа>` — Подписаться на уведомления")
+            appendLine("• `/unsubscribe <группа>` — Отписаться от уведомлений")
+            appendLine("• `/my_subscriptions` — Мои подписки")
+            appendLine("• `/list_groups` — Список доступных групп")
             if (isGroup && isAdminInGroup) {
-                appendLine("👥 `/subscribe_all` — Подписать всех участников этого чата (🛡️ только для админов)")
+                appendLine("• `/subscribe_all` — Подписать всех админов этого чата")
             } else if (isPrivate) {
-                appendLine("👥 `/subscribe_all <ссылка на группу>` — Подписать участников группы (🛡️ только для админов)")
+                appendLine("• `/subscribe_all <ссылка>` — Отправить кнопку подписки в чат")
             }
 
-            // 📦 Группы
-            appendLine("\n📦 *Группы:*")
+            appendLine("\n👥 *Управление группами:*")
             if (isPrivate) {
-                appendLine("➕ `/create_group <group> ; <описание>` — Создать свою группу")
-                appendLine("❌ `/delete_group <group>` — Удалить свою группу")
+                appendLine("• `/create_group <имя>; <описание>` — Создать свою приватную группу")
+                appendLine("• `/delete_group <имя>` — Удалить свою группу")
             }
-            appendLine("📃 `/list_groups` — Показать все доступные группы")
+            appendLine("• `/grant_access <группа> @user` — Дать доступ к группе")
+            appendLine("• `/revoke_access <группа> @user` — Забрать доступ")
+            appendLine("• `/allowed_users <группа>` — Кто имеет доступ")
+            appendLine("• `/grant_notify_rights <группа> @user` — Разрешить отправку уведомлений")
+            appendLine("• `/revoke_notify_rights <группа> @user` — Запретить отправку уведомлений")
 
-            // 🧩 Шаблоны
+            appendLine("\n🧩 *Шаблоны:*")
             if (isPrivate) {
-                appendLine("\n🧩 *Шаблоны:*")
-                appendLine("📃 `/list_templates` — Показать все шаблоны")
-//              appendLine("➕ `/add_template <тип> ; <канал> ; <текст>` — Добавить шаблон") // отключено
+                appendLine("• `/list_templates` — Показать шаблоны уведомлений")
             }
 
-            // 🚀 Уведомления
             appendLine("\n🚀 *Уведомления:*")
-            appendLine("⚡ `/notify_immediate <CALL|MR|RELEASE> <ссылка> <место> <время> <описание> <chat|private> <группа>` — Мгновенная отправка")
-            appendLine("⏰ `/notify_schedule <CALL|MR|RELEASE> <ссылка> <место> <время> <описание> <дата> <время> <повторы в ЛС> <повторы в чат> <интервал> [группа]` — Запланировать уведомление")
+            appendLine("• `/notify_immediate <тип> <ссылка> <место> <время> <описание> <private|chat> <группа>`")
+            appendLine("• `/notify_schedule <тип> <ссылка> <место> <время> <описание> <дата> <время> <повторы в ЛС> <повторы в чат> <интервал> [группа]`")
         }
 
-        sender.execute(
-            SendMessage(chatId, helpText).apply {
-                parseMode = "Markdown"
-            }
-        )
+        sender.execute(SendMessage(chatId, helpText).apply {
+            parseMode = "Markdown"
+        })
     }
 }

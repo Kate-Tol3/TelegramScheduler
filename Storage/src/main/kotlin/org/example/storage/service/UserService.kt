@@ -25,16 +25,20 @@ class UserService(private val userRepository: UserRepository) {
             )
     }
 
+    fun findByUsername(username: String): User? {
+        return userRepository.findByUsername(username)
+    }
+
+    fun create(telegramId: Long, chatId: String?, username: String?): User {
+        val user = User(
+            telegramId = telegramId,
+            chatId = chatId ?: telegramId.toString(), // если chatId null — используем telegramId
+            username = username ?: "unknown"
+        )
+        return userRepository.save(user)
+    }
 
 
-
-
-
-
-
-//    fun findAllByGroup(group: Group): List<User> {
-//        return userRepository.findAllByGroupsContaining(group)
-//    }
 
 }
 

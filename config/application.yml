@@ -34,7 +34,7 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
   logging:
     level:
-      org.springframework.kafka: INFO
+      org.springframework.kafka: INFOz y
       org.example.scheduler: DEBUG
 
 

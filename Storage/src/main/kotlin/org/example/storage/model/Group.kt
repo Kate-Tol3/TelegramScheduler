@@ -3,7 +3,6 @@ package org.example.storage.model
 import jakarta.persistence.*
 import java.util.*
 
-//Группы/роли: фронт, бек, дизайн, все и т.п.
 @Entity
 @Table(name = "groups")
 class Group(
@@ -15,7 +14,30 @@ class Group(
     @Column(nullable = false)
     val description: String,
 
-    // Добавлено новое поле:
     @Column(nullable = true)
-    val chatId: String? = null // ID чата Telegram для групповой рассылки
+    var chatId: String? = null,
+
+    @Column(nullable = false)
+    var isPrivate: Boolean = false,
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "owner_id")
+    var owner: User? = null,
+
+    @ManyToMany(fetch = FetchType.EAGER, cascade = [CascadeType.PERSIST, CascadeType.MERGE])
+    @JoinTable(
+        name = "group_allowed_users",
+        joinColumns = [JoinColumn(name = "group_id")],
+        inverseJoinColumns = [JoinColumn(name = "user_id")]
+    )
+    var allowedUsers: MutableSet<User> = mutableSetOf(),
+
+    @ManyToMany(fetch = FetchType.EAGER, cascade = [CascadeType.PERSIST, CascadeType.MERGE])
+    @JoinTable(
+        name = "group_notifiers",
+        joinColumns = [JoinColumn(name = "group_id")],
+        inverseJoinColumns = [JoinColumn(name = "user_id")]
+    )
+    var notifiers: MutableSet<User> = mutableSetOf()
+
 )

@@ -1,5 +1,3 @@
-// ✅ MySubscriptionsCommand: разделение подписок на глобальные и локальные
-
 package org.example.bot.commands
 
 import org.example.storage.service.SubscriptionService
@@ -20,26 +18,59 @@ class MySubscriptionsCommand(
         val dbUser = userService.resolveUser(user)
         val allSubscriptions = subscriptionService.findByUser(dbUser)
 
-        val global = allSubscriptions.filter { it.group.chatId == null }
-        val local = allSubscriptions.filter { it.group.chatId == chatId }
+        val local = mutableListOf<String>()
+        val global = mutableListOf<String>()
+        val private = mutableListOf<String>()
 
-        if (global.isEmpty() && local.isEmpty()) {
-            sender.execute(SendMessage(chatId, "Вы пока не подписаны ни на одну группу."))
+        for (subscription in allSubscriptions) {
+            val group = subscription.group
+            val name = subscription.groupName
+
+            when {
+                // Приватные глобальные
+                group.chatId == null && group.isPrivate -> private += name
+
+                // Публичные глобальные
+                group.chatId == null && !group.isPrivate -> global += name
+
+                // Локальные группы
+                group.chatId != null -> local += name
+            }
+        }
+
+        if (local.isEmpty() && global.isEmpty() && private.isEmpty()) {
+            sender.execute(SendMessage(chatId, "❗️Вы пока не подписаны ни на одну группу."))
             return
         }
 
-        val builder = StringBuilder("Ваши подписки:")
+        val builder = StringBuilder("*📋 Ваши подписки:*")
 
         if (local.isNotEmpty()) {
-            builder.append("\n\n📍 Локальные:")
-            local.forEach { builder.append("\n- ${it.groupName}") }
+            builder.appendLine("\n\n📍 *Локальные группы:*")
+            local.forEach { builder.appendLine("- ${escape(it)}") }
         }
 
         if (global.isNotEmpty()) {
-            builder.append("\n\n🌐 Глобальные:")
-            global.forEach { builder.append("\n- ${it.groupName}") }
+            builder.appendLine("\n🌐 *Глобальные группы:*")
+            global.forEach { builder.appendLine("- ${escape(it)}") }
         }
 
-        sender.execute(SendMessage(chatId, builder.toString()))
+        if (private.isNotEmpty()) {
+            builder.appendLine("\n🔒 *Приватные группы:*")
+            private.forEach { builder.appendLine("- ${escape(it)}") }
+        }
+
+        sender.execute(SendMessage(chatId, builder.toString()).apply {
+            parseMode = "Markdown"
+        })
+    }
+
+    private fun escape(text: String): String {
+        val charsToEscape = listOf('_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!')
+        var result = text
+        for (char in charsToEscape) {
+            result = result.replace(char.toString(), "\\$char")
+        }
+        return result
     }
 }

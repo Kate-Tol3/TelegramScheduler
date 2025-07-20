@@ -1,5 +1,3 @@
-// ✅ StartCommand: теперь выводит приветствие + список доступных команд (как /help)
-
 package org.example.bot.commands
 
 import org.example.storage.service.GroupService
@@ -21,14 +19,15 @@ class StartCommand(
         val chatId = chat.id.toString()
         val dbUser = userService.resolveUser(user)
 
-        // ✅ Глобальные группы при старте
+        // ✅ Глобальные группы при старте (если не найдены — создаём)
         val defaultGroups = listOf("backend", "frontend", "devops", "design", "all")
-        val globalGroups = defaultGroups.mapNotNull { name ->
-            groupService.findByName(name, null) ?: groupService.createGroup(
-                name = name,
-                description = "Глобальная группа $name",
-                chatId = null
-            )
+        val globalGroups = defaultGroups.map { name ->
+            groupService.findByName(name, null, dbUser)
+                ?: groupService.createGroup(
+                    name = name,
+                    description = "Глобальная группа $name",
+                    chatId = null
+                )
         }
 
         // ✅ Приветствие + список команд (как /help)

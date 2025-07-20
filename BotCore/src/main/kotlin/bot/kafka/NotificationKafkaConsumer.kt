@@ -30,11 +30,11 @@ class NotificationKafkaConsumer(
 
         println("📨 Получено уведомление из Kafka: $message")
 
-        val group = groupService.findByName(message.groupName, message.chatId)
-            ?: groupService.findByName(message.groupName, null)
+        // ❗ Теперь используем метод с 3 аргументами (user = null)
+        val group = groupService.findByName(message.groupName, message.chatId, null)
 
         if (group == null) {
-            println("❌ Группа '${message.groupName}' не найдена")
+            println("❌ Группа '${message.groupName}' не найдена или доступ к ней ограничен")
             return
         }
 
@@ -49,16 +49,9 @@ class NotificationKafkaConsumer(
             }
         }
 
-        // 🔸 Отправка пользователям (с учётом подписки на глобальные группы!)
+        // 🔸 Отправка подписанным пользователям
         if (message.sendToUsers) {
-            val users = if (group.chatId == null) {
-                // Только подписанные на глобальные группы
-                subscriptionService.findUsersByGroup(group)
-            } else {
-                // Локальная группа: подписчики
-                subscriptionService.findUsersByGroup(group)
-            }
-
+            val users = subscriptionService.findUsersByGroup(group)
             if (users.isEmpty()) {
                 println("⚠ У группы '${group.name}' нет подписчиков")
             } else {
@@ -67,58 +60,3 @@ class NotificationKafkaConsumer(
         }
     }
 }
-
-
-//@Component
-//class NotificationKafkaConsumer(
-//    private val objectMapper: ObjectMapper,
-//    private val notificationSender: NotificationSender,
-//    private val groupService: GroupService,
-//    private val subscriptionService: SubscriptionService,
-//    private val absSender: AbsSender // Telegram бот
-//) {
-//
-//    @KafkaListener(topics = ["notification-send"], groupId = "bot-group")
-//    fun consume(record: ConsumerRecord<String, String>) {
-//        val message = try {
-//            objectMapper.readValue(record.value(), NotificationMessage::class.java)
-//        } catch (e: Exception) {
-//            println("❌ Ошибка десериализации сообщения из Kafka: ${e.message}")
-//            return
-//        }
-//
-//        println("📨 Получено уведомление из Kafka: $message")
-//
-//        val group = groupService.findByName(message.groupName, message.chatId)
-//            ?: groupService.findByName(message.groupName, null)
-//
-//        if (group == null) {
-//            println("❌ Группа '${message.groupName}' не найдена")
-//            return
-//        }
-//
-//        // 🔹 Отправка в групповой чат
-//        if (message.sendToGroup) {
-//            val chatId = group.chatId ?: message.chatId
-//            val resolvedChatId = chatId?.toLongOrNull()
-//            if (resolvedChatId != null) {
-//                notificationSender.sendToGroups(absSender, listOf(resolvedChatId), message.text)
-//            } else {
-//                println("⚠️ Не удалось определить chatId для отправки в группу: ${message.chatId}")
-//            }
-//        }
-//
-//        // 🔸 Отправка пользователям
-//        if (message.sendToUsers) {
-//            val users = subscriptionService.findUsersByGroup(group)
-//            if (users.isEmpty()) {
-//                println("⚠ У группы '${group.name}' нет подписчиков")
-//            } else {
-//                notificationSender.sendToUsers(absSender, users, message.text)
-//            }
-//        }
-//    }
-//
-//
-//
-//}
