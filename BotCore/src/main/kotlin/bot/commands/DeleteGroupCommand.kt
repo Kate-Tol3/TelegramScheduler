@@ -36,8 +36,17 @@ class DeleteGroupCommand(
         }
 
         val dbUser = userService.resolveUser(user)
-        val contextChatId = if (chat.isUserChat) null else chatId
-        val group = groupService.findByName(groupName, contextChatId, dbUser)
+        val contextChatId = chatId
+        var group = groupService.findByName(groupName, contextChatId, dbUser)
+
+        if (group == null && contextChatId != null) {
+            val fallback = groupService.findByNameWithUsers(groupName, contextChatId)
+            if (fallback != null && fallback.owner?.id == dbUser.id) {
+                println("🔁 Fallback: найдена локальная группа пользователя ${dbUser.username}")
+                group = fallback
+            }
+        }
+
 
         if (group == null) {
             sender.execute(
@@ -46,6 +55,7 @@ class DeleteGroupCommand(
             )
             return
         }
+
 
         if (group.chatId == null && !group.isPrivate) {
             sender.execute(

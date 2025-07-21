@@ -84,12 +84,18 @@ class GroupService(private val groupRepository: GroupRepository) {
 
     fun delete(id: UUID) = groupRepository.deleteById(id)
 
-    fun delete(group: Group) = group.id?.let { delete(it) }
+//    fun delete(group: Group) = group.id?.let { delete(it) }
+
+    fun delete(group: Group) {
+        groupRepository.delete(group)
+    }
+
 
     fun deleteWithNotifications(group: Group, scheduledNotificationService: ScheduledNotificationService) {
         scheduledNotificationService.deleteAllByGroup(group)
         groupRepository.delete(group)
     }
+
 
 
 

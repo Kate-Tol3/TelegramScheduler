@@ -10,8 +10,13 @@ import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingC
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
+import org.telegram.telegrambots.meta.api.objects.ChatMemberUpdated
 import org.telegram.telegrambots.meta.api.objects.Update
 import java.util.*
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault
+
 
 @Component
 class TelegramBot(
@@ -31,23 +36,19 @@ class TelegramBot(
 
     @PostConstruct
     fun registerCommands() {
-        // ✅ Общие
         register(StartCommand(groupService, subscriptionService, userService))
         register(HelpCommand())
 
-        // ✅ Работа с группами
         register(CreateGroupCommand(groupService, subscriptionService, userService))
-        register(DeleteGroupCommand(groupService, subscriptionService,scheduledNotificationService,  userService))
+        register(DeleteGroupCommand(groupService, subscriptionService, scheduledNotificationService, userService))
         register(ListGroupsCommand(groupService, userService))
 
-        // ✅ Подписки
         register(SubscribeCommand(userService, groupService, subscriptionService))
         register(UnsubscribeCommand(userService, groupService, subscriptionService))
         register(MySubscriptionsCommand(userService, subscriptionService))
-        register(SubscribeAllCommand(userService, groupService, subscriptionService)) // если используешь
-        register(MyChatsCommand(groupService)) // если реализована
+        register(SubscribeAllCommand(userService, groupService, subscriptionService))
+        register(MyChatsCommand(groupService))
 
-        // ✅ Доступ к приватным группам
         register(GrantAccessCommand(userService, groupService))
         register(RevokeAccessCommand(userService, groupService, subscriptionService))
         register(GrantNotifyRightsCommand(userService, groupService))
@@ -55,72 +56,40 @@ class TelegramBot(
         register(AllowedUsersCommand(groupService, userService))
         register(NotifiersCommand(groupService, userService))
 
-        // ✅ Шаблоны (если нужно)
-        register(ListTemplatesCommand(templateService)) // если реализована
+        register(ListTemplatesCommand(templateService))
 
-        // ✅ Уведомления
         register(
             NotifyImmediateCommand(
-                eventService,
-                templateService,
-                userService,
-                groupService,
-                subscriptionService,
-                notificationSender
+                eventService, templateService, userService,
+                groupService, subscriptionService, notificationSender
             )
         )
+
         register(
             NotifyScheduleCommand(
-                eventService,
-                templateService,
-                scheduledNotificationService,
-                groupService,
-                userService,
-                subscriptionService
+                eventService, templateService, scheduledNotificationService,
+                groupService, userService, subscriptionService
             )
         )
+
+        registerBotMenuCommands()
     }
 
     override fun processNonCommandUpdate(update: Update) {
+        if (update.hasMyChatMember()) {
+            handleMyChatMemberUpdate(update.myChatMember)
+            return
+        }
+
         if (update.hasCallbackQuery()) {
             processCallbackQuery(update)
             return
         }
 
         val message = update.message ?: return
-        val chat = message.chat
-        val chatId = chat.id.toString()
-
-        // 🟢 Если это групповой чат — регистрируем его
-        if (chat.isGroupChat || chat.isSuperGroupChat) {
-            val groupName = chat.title ?: "группа-${chatId.takeLast(6)}"
-            val existing = groupService.findByName(groupName, chatId, null) // ← исправлено
-
-            if (existing == null) {
-                val group = groupService.createGroup(
-                    name = groupName,
-                    description = "Группа Telegram $groupName",
-                    chatId = chatId
-                )
-
-                try {
-                    val admins = execute(GetChatAdministrators(chatId))
-                    for (admin in admins) {
-                        val tgUser = admin.user
-                        if (!tgUser.isBot) {
-                            val user = userService.resolveUser(tgUser)
-                            subscriptionService.subscribe(user, group)
-                        }
-                    }
-                    println("✅ Группа '$groupName' создана и админы подписаны")
-                } catch (e: Exception) {
-                    println("⚠️ Не удалось получить админов: ${e.message}")
-                }
-            }
-        }
-
-
+        val chatId = message.chatId.toString()
         val text = message.text ?: return
+
         if (!text.startsWith("/")) {
             execute(SendMessage(chatId, "Неизвестная команда. Используйте /help для списка команд."))
         }
@@ -168,7 +137,6 @@ class TelegramBot(
                 "⚠️ Вы уже подписаны на группу '${group.name}'"
             }
 
-            // Всплывающее уведомление
             execute(
                 AnswerCallbackQuery.builder()
                     .callbackQueryId(callback.id)
@@ -177,7 +145,6 @@ class TelegramBot(
                     .build()
             )
 
-            // Сообщение в чат, если это не личка
             if (!message.chat.isUserChat) {
                 execute(SendMessage(chatId, feedback))
             }
@@ -193,5 +160,78 @@ class TelegramBot(
         execute(SendMessage(chatId, reply))
     }
 
+    private fun handleMyChatMemberUpdate(memberUpdate: ChatMemberUpdated) {
+        val chat = memberUpdate.chat
+        val chatId = chat.id.toString()
+        val newStatus = memberUpdate.newChatMember.status
+
+        println("📥 my_chat_member: newStatus = $newStatus, chatId = $chatId")
+
+        when (newStatus) {
+            "left", "kicked" -> {
+                val group = groupService.findByChatId(chatId)
+                println("🔍 Найдена группа для удаления: ${group?.name}")
+
+                if (group != null) {
+                    println("🗑 Бот удалён из чата '${chat.title}', удаляем группу '${group.name}'")
+                    scheduledNotificationService.deleteAllByGroup(group)
+                    subscriptionService.deleteAllByGroup(group)
+                    groupService.delete(group)
+                }
+            }
+
+            "member", "administrator" -> {
+                val title = chat.title ?: "группа-${chatId.takeLast(6)}"
+                val existing = groupService.findByChatId(chatId)
+                println("➕ Проверка: существует ли уже группа для $chatId → ${existing != null}")
+
+                if (existing == null) {
+                    val group = groupService.createGroup(
+                        name = title,
+                        description = "Группа Telegram $title",
+                        chatId = chatId
+                    )
+
+                    try {
+                        val admins = execute(GetChatAdministrators(chatId))
+                        for (admin in admins) {
+                            val tgUser = admin.user
+                            if (!tgUser.isBot) {
+                                val user = userService.resolveUser(tgUser)
+                                subscriptionService.subscribe(user, group)
+                            }
+                        }
+                        println("✅ Группа '$title' создана и админы подписаны")
+                    } catch (e: Exception) {
+                        println("⚠️ Не удалось получить админов: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun registerBotMenuCommands() {
+        val commands = listOf(
+            BotCommand("start", "Начать работу с ботом"),
+            BotCommand("help", "Список доступных команд"),
+            BotCommand("subscribe", "Подписаться на группу"),
+            BotCommand("unsubscribe", "Отписаться от группы"),
+            BotCommand("list_groups", "Показать все группы"),
+            BotCommand("my_subscriptions", "Мои подписки"),
+            BotCommand("notify_immediate", "Срочное уведомление"),
+            BotCommand("notify_schedule", "Запланировать уведомление"),
+            BotCommand("create_group", "Создать группу"),
+            BotCommand("delete_group", "Удалить свою группу"),
+            BotCommand("subscribe_all", "Подписать всех участников"),
+            BotCommand("grant_access", "Выдать доступ к группе"),
+            BotCommand("revoke_access", "Отозвать доступ к группе"),
+            BotCommand("grant_notify_rights", "Выдать право на уведомления"),
+            BotCommand("revoke_notify_rights", "Отозвать право на уведомления"),
+            BotCommand("my_chats", "Мои чаты"),
+            BotCommand("list_templates", "Список шаблонов уведомлений")
+        )
+
+        execute(SetMyCommands(commands, BotCommandScopeDefault(), null))
+    }
 
 }

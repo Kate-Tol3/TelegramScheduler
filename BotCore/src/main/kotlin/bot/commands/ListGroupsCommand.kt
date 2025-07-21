@@ -23,15 +23,20 @@ class ListGroupsCommand(
         }.sortedBy { it.name }
 
         val localGroups = allGroups.filter {
+            val owner = it.owner
+
             if (chat.isUserChat) {
-                // Если команда вызвана из лички — показываем локальные группы, к которым у пользователя есть доступ
+                // В личке: локальная группа только для владельца (если есть)
                 it.chatId != null &&
-                        (!it.isPrivate || it.owner?.id == dbUser.id || dbUser in it.allowedUsers)
+                        (!it.isPrivate || owner?.id == dbUser.id || dbUser in it.allowedUsers) &&
+                        (owner == null || owner.id == dbUser.id)
             } else {
-                // Если команда вызвана в чате — показываем локальные группы, привязанные к этому чату
-                it.chatId == chatId
+                // В чате: показываем только группы этого чата, и если есть владелец — только ему
+                it.chatId == chatId && (owner == null || owner.id == dbUser.id)
             }
         }.sortedBy { it.name }
+
+
 
 
         val privateGlobalGroups = allGroups.filter {
@@ -94,6 +99,8 @@ class ListGroupsCommand(
             builder.appendLine("\n🔐 *Приватные локальные группы:*")
             privateLocalGroups.forEach {
                 builder.appendLine("\\- `${escape(it.name)}`")
+//                builder.appendLine("\\- $label")
+
 
             }
         }
