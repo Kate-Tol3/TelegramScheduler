@@ -21,13 +21,13 @@ class GrantNotifyRightsCommand(
             return
         }
 
-        val groupName = arguments[0].trim()
-        val username = arguments[1].removePrefix("@").trim()
+        val rawUsername = arguments.last().removePrefix("@").trim()
+        val groupName = arguments.dropLast(1).joinToString(" ").trim()
+
         val requester = userService.resolveUser(user)
         val contextChatId = if (chat.isUserChat) null else chatId
 
         val group = groupService.findByName(groupName, contextChatId, requester)
-
         if (group == null) {
             sender.execute(SendMessage(chatId, "❌ Группа '${escape(groupName)}' не найдена или недоступна."))
             return
@@ -38,14 +38,14 @@ class GrantNotifyRightsCommand(
             return
         }
 
-        val targetUser = userService.findByUsername(username)
+        val targetUser = userService.findByUsername(rawUsername)
         if (targetUser == null) {
-            sender.execute(SendMessage(chatId, "❌ Пользователь @$username не найден."))
+            sender.execute(SendMessage(chatId, "❌ Пользователь @$rawUsername не найден."))
             return
         }
 
         if (group.notifiers.any { it.id == targetUser.id }) {
-            sender.execute(SendMessage(chatId, "⚠️ Пользователь @$username уже может отправлять уведомления."))
+            sender.execute(SendMessage(chatId, "⚠️ Пользователь @$rawUsername уже может отправлять уведомления."))
             return
         }
 
@@ -56,8 +56,10 @@ class GrantNotifyRightsCommand(
         }
 
         val updatedGroup = groupService.grantNotifyRights(group, targetUser)
-
-        sender.execute(SendMessage(chatId, "✅ Пользователь @$username теперь может отправлять уведомления в группу '${escape(updatedGroup.name)}'."))
+        // Название группы больше НЕ экранируется
+        sender.execute(
+            SendMessage(chatId, "✅ Пользователь @$rawUsername теперь может отправлять уведомления в группу '${updatedGroup.name}'.")
+        )
     }
 
     private fun escape(text: String): String {

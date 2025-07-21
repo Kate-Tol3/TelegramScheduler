@@ -23,8 +23,16 @@ class ListGroupsCommand(
         }.sortedBy { it.name }
 
         val localGroups = allGroups.filter {
-            it.chatId == chatId && (!it.isPrivate || it.owner?.id == dbUser.id || dbUser in it.allowedUsers)
+            if (chat.isUserChat) {
+                // Если команда вызвана из лички — показываем локальные группы, к которым у пользователя есть доступ
+                it.chatId != null &&
+                        (!it.isPrivate || it.owner?.id == dbUser.id || dbUser in it.allowedUsers)
+            } else {
+                // Если команда вызвана в чате — показываем локальные группы, привязанные к этому чату
+                it.chatId == chatId
+            }
         }.sortedBy { it.name }
+
 
         val privateGlobalGroups = allGroups.filter {
             it.chatId == null &&

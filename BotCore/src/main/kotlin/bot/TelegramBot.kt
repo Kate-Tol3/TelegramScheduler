@@ -37,7 +37,7 @@ class TelegramBot(
 
         // ✅ Работа с группами
         register(CreateGroupCommand(groupService, subscriptionService, userService))
-        register(DeleteGroupCommand(groupService, subscriptionService, userService))
+        register(DeleteGroupCommand(groupService, subscriptionService,scheduledNotificationService,  userService))
         register(ListGroupsCommand(groupService, userService))
 
         // ✅ Подписки
@@ -53,6 +53,7 @@ class TelegramBot(
         register(GrantNotifyRightsCommand(userService, groupService))
         register(RevokeNotifyRightsCommand(userService, groupService))
         register(AllowedUsersCommand(groupService, userService))
+        register(NotifiersCommand(groupService, userService))
 
         // ✅ Шаблоны (если нужно)
         register(ListTemplatesCommand(templateService)) // если реализована

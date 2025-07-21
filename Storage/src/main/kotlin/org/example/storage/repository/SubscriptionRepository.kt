@@ -13,4 +13,7 @@ SubscriptionRepository : JpaRepository<Subscription, UUID> {
     fun findByUserAndGroup(user: User, group: Group): Subscription?
     fun findByUser(user: User): List<Subscription>
     fun findByGroup(group: Group): List<Subscription>
+
+    fun findAllByGroup(group: Group): List<Subscription>
+
 }

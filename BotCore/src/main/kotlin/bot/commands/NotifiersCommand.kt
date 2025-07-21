@@ -8,50 +8,49 @@ import org.telegram.telegrambots.meta.api.objects.Chat
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.bots.AbsSender
 
-class AllowedUsersCommand(
+class NotifiersCommand(
     private val groupService: GroupService,
     private val userService: UserService
-) : BotCommand("allowed_users", "Список пользователей с доступом к приватной группе") {
+) : BotCommand("notifiers", "Список пользователей с правом на уведомления") {
 
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val chatId = chat.id.toString()
 
         if (arguments.isEmpty()) {
-            sender.execute(SendMessage(chatId, "⚠️ Формат: /allowed_users <группа>"))
+            sender.execute(SendMessage(chatId, "⚠️ Формат: /notifiers <группа>"))
             return
         }
 
         val groupName = arguments.joinToString(" ").trim()
         val dbUser = userService.resolveUser(user)
-
         val contextChatId = if (chat.isUserChat) null else chatId
-        val group = groupService.findByName(groupName, contextChatId, dbUser)
 
+        val group = groupService.findByName(groupName, contextChatId, dbUser)
         if (group == null || !group.isPrivate) {
             sender.execute(SendMessage(chatId, "❌ Приватная группа '$groupName' не найдена или недоступна."))
             return
         }
 
         if (group.owner?.id != dbUser.id && dbUser !in group.allowedUsers) {
-            sender.execute(SendMessage(chatId, "❌ У вас нет прав просматривать список пользователей этой группы."))
+            sender.execute(SendMessage(chatId, "❌ У вас нет прав просматривать список отправителей этой группы."))
             return
         }
 
-        val allowedUsers = group.allowedUsers
+        val notifiers = group.notifiers
 
-        if (allowedUsers.isEmpty()) {
-            sender.execute(SendMessage(chatId, "ℹ️ У группы '$groupName' нет разрешённых пользователей."))
+        if (notifiers.isEmpty()) {
+            sender.execute(SendMessage(chatId, "ℹ️ У группы '$groupName' нет назначенных отправителей."))
             return
         }
 
-        val list = allowedUsers.joinToString("\n") {
+        val list = notifiers.joinToString("\n") {
             val label = it.username?.let { name -> "@$name" } ?: "ID: ${it.telegramId}"
             val prefix = if (it == group.owner) "⭐ " else "- "
             "$prefix$label"
         }
 
         val text = """
-            👥 Пользователи с доступом к группе '$groupName':
+            📣 Пользователи, которые могут отправлять уведомления в группу '$groupName':
             $list
         """.trimIndent()
 

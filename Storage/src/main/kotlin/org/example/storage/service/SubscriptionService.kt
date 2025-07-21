@@ -1,5 +1,6 @@
 package org.example.storage.service
 
+import jakarta.transaction.Transactional
 import org.example.storage.model.Group
 import org.example.storage.model.Subscription
 import org.example.storage.model.User
@@ -74,6 +75,12 @@ class SubscriptionService(
      */
     fun findUsersByGroup(group: Group): List<User> {
         return subscriptionRepository.findByGroup(group).map { it.user }.distinct()
+    }
+
+    @Transactional
+    fun deleteAllByGroup(group: Group) {
+        val subs = subscriptionRepository.findAllByGroup(group)
+        subscriptionRepository.deleteAll(subs)
     }
 
 

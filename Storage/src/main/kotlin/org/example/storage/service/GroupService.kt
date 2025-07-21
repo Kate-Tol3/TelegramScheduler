@@ -1,5 +1,8 @@
 package org.example.storage.service
 
+import jakarta.persistence.EntityManager
+import jakarta.persistence.PersistenceContext
+import jakarta.transaction.Transactional
 import org.example.storage.model.Group
 import org.example.storage.model.User
 import org.example.storage.repository.GroupRepository
@@ -9,19 +12,39 @@ import java.util.*
 @Service
 class GroupService(private val groupRepository: GroupRepository) {
 
+    @PersistenceContext
+    private lateinit var entityManager: EntityManager
+
     fun findById(id: UUID): Group? = groupRepository.findById(id).orElse(null)
 
-    fun findByName(name: String, chatId: String?, user: User?): Group? {
+    fun findByName(
+        name: String,
+        chatId: String?,
+        user: User?,
+        isUserAdminInChat: (String) -> Boolean = { false }
+    ): Group? {
         println("🟢 Поиск группы: name=$name, chatId=$chatId, user=${user?.username}")
 
-        // 1. Ищем локальную группу (по chatId, доступную в этом чате)
+        // 1. Локальная группа по chatId (если вызов из того же чата)
         if (chatId != null) {
             val local = groupRepository.findByNameWithUsers(name, chatId)
             if (local != null && !local.isPrivate) return local
             if (local != null && local.isPrivate && (user == local.owner || user in local.allowedUsers)) return local
         }
 
-        // 2. Приватные группы (chatId == null, isPrivate == true)
+        // 1.5 — локальная публичная группа из другого чата, если пользователь админ в этом чате
+        if (user != null) {
+            val allNamed = groupRepository.findAllByNameWithUsers(name)
+            val adminAccessibleLocal = allNamed.firstOrNull {
+                it.chatId != null &&
+                        it.owner == null &&
+                        !it.isPrivate &&
+                        isUserAdminInChat(it.chatId!!)
+            }
+            if (adminAccessibleLocal != null) return adminAccessibleLocal
+        }
+
+        // 2. Глобальная приватная
         if (user != null) {
             val byName = groupRepository.findAllByNameWithUsers(name)
             for (group in byName) {
@@ -33,12 +56,13 @@ class GroupService(private val groupRepository: GroupRepository) {
             }
         }
 
-        // 3. Публичные глобальные группы (chatId == null, isPrivate == false)
+        // 3. Глобальная публичная
         val global = groupRepository.findByNameWithUsers(name, null)
         if (global != null && !global.isPrivate) return global
 
         return null
     }
+
 
 
     fun findAllByName(name: String): List<Group> = groupRepository.findAllByName(name)
@@ -61,6 +85,13 @@ class GroupService(private val groupRepository: GroupRepository) {
     fun delete(id: UUID) = groupRepository.deleteById(id)
 
     fun delete(group: Group) = group.id?.let { delete(it) }
+
+    fun deleteWithNotifications(group: Group, scheduledNotificationService: ScheduledNotificationService) {
+        scheduledNotificationService.deleteAllByGroup(group)
+        groupRepository.delete(group)
+    }
+
+
 
     fun createGroup(
         name: String,
@@ -101,16 +132,28 @@ class GroupService(private val groupRepository: GroupRepository) {
     }
 
 
-
-
+    @Transactional
     fun grantNotifyRights(group: Group, user: User): Group {
-        group.notifiers.add(user)
+        // Убедимся, что notifiers содержит именно Managed-сущности
+        val already = group.notifiers.any { it.id == user.id }
+        if (!already) {
+            // Найдём user через entityManager
+            val managedUser = group.allowedUsers.firstOrNull { it.id == user.id }
+                ?: group.owner?.takeIf { it.id == user.id }
+                ?: throw IllegalStateException("User with id=${user.id} is not allowed in this group")
+
+            group.notifiers.add(managedUser)
+        }
+
         return groupRepository.save(group)
     }
 
+
+
     fun isNotifier(group: Group, user: User): Boolean {
-        return user == group.owner || group.notifiers.contains(user)
+        return group.owner?.id == user.id || group.notifiers.any { it.id == user.id }
     }
+
 
     fun isAllowed(group: Group, user: User): Boolean {
         return user == group.owner || group.allowedUsers.contains(user)

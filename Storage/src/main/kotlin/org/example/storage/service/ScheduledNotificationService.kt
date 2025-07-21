@@ -1,5 +1,6 @@
 package org.example.storage.service
 
+import jakarta.transaction.Transactional
 import org.example.storage.model.*
 import org.example.storage.repository.ScheduledNotificationRepository
 import org.springframework.stereotype.Service
@@ -34,9 +35,9 @@ class ScheduledNotificationService(
         require(repeatCountUsers >= 0) { "repeatCountUsers не может быть меньше 0" }
         require(repeatCountGroups >= 0) { "repeatCountGroups не может быть меньше 0" }
 
-        val hasRepeats = repeatCountUsers > 0 || repeatCountGroups > 0
-        if (hasRepeats && repeatIntervalMinutes <= 0) {
-            throw IllegalArgumentException("repeatIntervalMinutes должен быть больше 0 при наличии повторов")
+        val multipleRepeats = repeatCountUsers > 1 || repeatCountGroups > 1
+        if (multipleRepeats && repeatIntervalMinutes <= 0) {
+            throw IllegalArgumentException("repeatIntervalMinutes должен быть больше 0 при нескольких доставках")
         }
 
         val notification = ScheduledNotification(
@@ -55,12 +56,27 @@ class ScheduledNotificationService(
         return scheduledNotificationRepository.save(notification)
     }
 
+    // ScheduledNotificationService.kt
+    @Transactional
+    fun deleteAllByGroup(group: Group) {
+        val all = scheduledNotificationRepository.findAll()
+        val related = all.filter { it.targetGroups.any { g -> g.id == group.id } }
+
+        for (notification in related) {
+            scheduledNotificationRepository.delete(notification)
+        }
+    }
+
 
 
 
     fun getDueNotificationsWithTargets(now: LocalDateTime): List<ScheduledNotification> {
         return scheduledNotificationRepository.findDueWithTargets(now)
     }
+
+    fun findAllWithGroup(group: Group): List<ScheduledNotification> =
+        scheduledNotificationRepository.findAllByGroup(group)
+
 
     fun findAllWithUsers(): List<ScheduledNotification> =
         scheduledNotificationRepository.findAllWithUsers()

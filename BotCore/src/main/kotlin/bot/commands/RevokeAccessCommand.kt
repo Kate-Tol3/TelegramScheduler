@@ -23,8 +23,11 @@ class RevokeAccessCommand(
             return
         }
 
-        val groupName = arguments[0]
-        val username = arguments[1].removePrefix("@")
+        val rawUsername = arguments.last().removePrefix("@").trim()
+        val rawGroupName = arguments.dropLast(1).joinToString(" ").trim()
+
+        val groupName = rawGroupName.trim()
+
 
         val requester = userService.resolveUser(user)
         val group = groupService.findByName(groupName, chatId, requester)
@@ -32,7 +35,7 @@ class RevokeAccessCommand(
         println("🔍 Отзыв доступа:")
         println("👤 Запрос от: ${requester.username}")
         println("👥 Целевая группа: $groupName")
-        println("🎯 Целевой пользователь: @$username")
+        println("🎯 Целевой пользователь: @$rawUsername")
 
         if (group == null || !group.isPrivate) {
             sender.execute(SendMessage(chatId, "❌ Приватная группа '${escape(groupName)}' не найдена или доступ ограничен."))
@@ -40,13 +43,13 @@ class RevokeAccessCommand(
         }
 
         if (group.owner?.id != requester.id) {
-            sender.execute(SendMessage(chatId, "❌ Только владелец может отзывать доступ к группе '${escape(groupName)}'."))
+            sender.execute(SendMessage(chatId, "❌ Только владелец может отзывать доступ к группе '${escape(group.name)}'."))
             return
         }
 
-        val targetUser = userService.findByUsername(username)
+        val targetUser = userService.findByUsername(rawUsername)
         if (targetUser == null) {
-            sender.execute(SendMessage(chatId, "❌ Пользователь @$username не найден."))
+            sender.execute(SendMessage(chatId, "❌ Пользователь @$rawUsername не найден."))
             return
         }
 
@@ -59,12 +62,12 @@ class RevokeAccessCommand(
         }
 
         if (!hadAccess) {
-            sender.execute(SendMessage(chatId, "⚠️ Пользователь @$username не имел доступа к группе '${escape(groupName)}'."))
+            sender.execute(SendMessage(chatId, "⚠️ Пользователь @$rawUsername не имел доступа к группе '${escape(group.name)}'."))
             return
         }
 
         groupService.save(group)
-        sender.execute(SendMessage(chatId, "✅ Доступ пользователя @$username к группе '${escape(groupName)}' отозван."))
+        sender.execute(SendMessage(chatId, "✅ Доступ пользователя @$rawUsername к группе '${escape(group.name)}' отозван."))
     }
 
     private fun escape(text: String): String {

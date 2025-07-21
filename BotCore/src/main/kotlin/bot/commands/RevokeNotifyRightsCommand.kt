@@ -21,8 +21,13 @@ class RevokeNotifyRightsCommand(
             return
         }
 
-        val groupName = arguments[0].trim()
-        val username = arguments[1].removePrefix("@").trim()
+        // Выделяем имя пользователя и очищенное название группы
+        val rawUsername = arguments.last().removePrefix("@").trim()
+        val rawGroupName = arguments.dropLast(1).joinToString(" ").trim()
+
+        val groupName = rawGroupName.trim()
+
+
         val requester = userService.resolveUser(user)
         val contextChatId = if (chat.isUserChat) null else chatId
 
@@ -31,10 +36,10 @@ class RevokeNotifyRightsCommand(
         println("🚫 Попытка отозвать notify-права:")
         println("👤 Запрос от: ${requester.username} (id=${requester.telegramId})")
         println("👥 Группа: $groupName")
-        println("🎯 Цель: @$username")
+        println("🎯 Цель: @$rawUsername")
 
         if (group == null) {
-            sender.execute(SendMessage(chatId, "❌ Группа '${escape(groupName)}' не найдена или недоступна."))
+            sender.execute(SendMessage(chatId, "❌ Группа '${groupName}' не найдена или недоступна."))
             return
         }
 
@@ -43,23 +48,23 @@ class RevokeNotifyRightsCommand(
             return
         }
 
-        val targetUser = userService.findByUsername(username)
+        val targetUser = userService.findByUsername(rawUsername)
         if (targetUser == null) {
-            sender.execute(SendMessage(chatId, "❌ Пользователь @$username не найден."))
+            sender.execute(SendMessage(chatId, "❌ Пользователь @$rawUsername не найден."))
             return
         }
 
         val removed = group.notifiers.removeIf { it.id == targetUser.id }
 
         if (!removed) {
-            sender.execute(SendMessage(chatId, "⚠️ У пользователя @$username не было прав на уведомления."))
+            sender.execute(SendMessage(chatId, "⚠️ У пользователя @$rawUsername не было прав на уведомления."))
             return
         }
 
         groupService.save(group)
 
-        println("✅ Права пользователя @$username отозваны из группы '${group.name}'")
-        sender.execute(SendMessage(chatId, "✅ Пользователь @$username больше не может отправлять уведомления в группу '${escape(group.name)}'."))
+        println("✅ Права пользователя @$rawUsername отозваны из группы '${group.name}'")
+        sender.execute(SendMessage(chatId, "✅ Пользователь @$rawUsername больше не может отправлять уведомления в группу '${group.name}'."))
     }
 
     private fun escape(text: String): String {

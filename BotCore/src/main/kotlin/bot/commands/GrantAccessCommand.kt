@@ -23,8 +23,13 @@ class GrantAccessCommand(
             return
         }
 
-        val groupName = arguments[0].trim()
-        val username = arguments[1].removePrefix("@").trim()
+        // Выделяем username и groupName с очисткой
+        val rawUsername = arguments.last().removePrefix("@").trim()
+        val rawGroupName = arguments.dropLast(1).joinToString(" ").trim()
+
+        val groupName = rawGroupName.trim()
+
+
         val requester = userService.resolveUser(user)
 
         val contextChatId = if (chat.isUserChat) {
@@ -43,15 +48,15 @@ class GrantAccessCommand(
 
         if (group.owner?.id != requester.id) {
             sender.execute(
-                SendMessage(chatId, "❌ Только владелец может управлять доступом к группе \"$groupName\".")
+                SendMessage(chatId, "❌ Только владелец может управлять доступом к группе \"${group.name}\".")
             )
             return
         }
 
-        val targetUser = userService.findByUsername(username)
+        val targetUser = userService.findByUsername(rawUsername)
         if (targetUser == null) {
             sender.execute(
-                SendMessage(chatId, "❌ Пользователь @$username не найден.")
+                SendMessage(chatId, "❌ Пользователь @$rawUsername не найден.")
             )
             return
         }
@@ -64,7 +69,7 @@ class GrantAccessCommand(
 
         if (conflict) {
             sender.execute(
-                SendMessage(chatId, "⚠️ У пользователя @$username уже есть доступ к группе с таким названием и владельцем.")
+                SendMessage(chatId, "⚠️ У пользователя @$rawUsername уже есть доступ к группе с таким названием и владельцем.")
             )
             return
         }
@@ -79,15 +84,13 @@ class GrantAccessCommand(
         val updatedGroup = groupService.grantAccess(group, targetUser)
 
         val notice = buildString {
-            append("✅ Доступ пользователя @$username к группе \"${updatedGroup.name}\" предоставлен.")
+            append("✅ Доступ пользователя @$rawUsername к группе \"${updatedGroup.name}\" предоставлен.")
             if (renamed) {
                 appendLine()
                 append("ℹ️ Название группы изменено на \"${updatedGroup.name}\", чтобы обеспечить уникальность.")
             }
         }
 
-        sender.execute(
-            SendMessage(chatId, notice)
-        )
+        sender.execute(SendMessage(chatId, notice))
     }
 }

@@ -64,34 +64,33 @@ class NotifyScheduleCommand(
 
         val place = arguments.slice(3 until dateIndex).joinToString(" ").ifBlank { "Место не указано" }
 
-        val tail = arguments.drop(dateIndex + 2)
-
-        val fullTail = tail.joinToString(" ")
-        val parts = fullTail.split(";")
+        val tail = arguments.drop(dateIndex + 2).joinToString(" ")
 
         var description = "Без описания"
-        var repeatUsers = 1
-        var repeatGroups = 0
+        var deliveriesToUsers = 1
+        var deliveriesToGroup = 0
         var interval = 0
         var groupName: String? = null
 
-        if (parts.size >= 2) {
+        if (';' in tail) {
+            val parts = tail.split(";", limit = 2)
             description = parts[0].trim().ifBlank { "Без описания" }
 
-            val params = parts[1].trim().split(" ")
-
-            if (params.size >= 3 && params[0].matches(Regex("\\d+")) &&
-                params[1].matches(Regex("\\d+")) && params[2].matches(Regex("\\d+"))
+            val params = parts.getOrNull(1)?.trim()?.split(" ") ?: emptyList()
+            if (params.size >= 3 &&
+                params[0].matches(Regex("\\d+")) &&
+                params[1].matches(Regex("\\d+")) &&
+                params[2].matches(Regex("\\d+"))
             ) {
-                repeatUsers = params[0].toInt()
-                repeatGroups = params[1].toInt()
+                deliveriesToUsers = params[0].toInt()
+                deliveriesToGroup = params[1].toInt()
                 interval = params[2].toInt()
-                groupName = params.drop(3).joinToString(" ").ifBlank { null }
+
+                groupName = params.drop(3).joinToString(" ").trim().ifBlank { null }
             }
         } else {
-            description = tail.joinToString(" ").ifBlank { "Без описания" }
+            description = tail.ifBlank { "Без описания" }
         }
-
 
         val template = templateService.findByEventType(eventType)
         if (template == null) {
@@ -100,7 +99,17 @@ class NotifyScheduleCommand(
         }
 
         val dbUser = userService.resolveUser(user)
-        val group = groupName?.let { groupService.findByName(it, chatId, dbUser) }
+        val group = groupName?.let {
+            groupService.findByName(it, chatId, dbUser) { targetChatId ->
+                try {
+                    val admins = sender.execute(org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatAdministrators(targetChatId))
+                    admins.any { it.user.id == user.id }
+                } catch (e: Exception) {
+                    println("⚠️ Ошибка при проверке админства: ${e.message}")
+                    false
+                }
+            }
+        }
 
         if (group != null) {
             val isSenderSubscribed = subscriptionService.findUsersByGroup(group)
@@ -111,16 +120,13 @@ class NotifyScheduleCommand(
                 return
             }
 
-            val isOwner = group.owner?.telegramId == user.id
-            val isNotifier = dbUser in group.notifiers
-
-            if (group.isPrivate && !isOwner && !isNotifier) {
+            if (!groupService.isNotifier(group, dbUser)) {
                 sender.execute(SendMessage(chatId, "❌ Только владелец или назначенные отправители могут отправлять уведомления в группу \"${group.name}\""))
                 return
             }
 
-            if (repeatUsers <= 0 && repeatGroups <= 0) {
-                sender.execute(SendMessage(chatId, "⚠️ Укажите повторы (в ЛС или в группу), чтобы уведомление было доставлено."))
+            if (deliveriesToUsers <= 0 && deliveriesToGroup <= 0) {
+                sender.execute(SendMessage(chatId, "⚠️ Укажите количество доставок (в ЛС или в группу), чтобы уведомление было доставлено."))
                 return
             }
         }
@@ -141,13 +147,13 @@ class NotifyScheduleCommand(
                 template = template,
                 eventTime = eventTime,
                 repeatIntervalMinutes = interval,
-                repeatCountUsers = repeatUsers,
-                repeatCountGroups = repeatGroups,
+                repeatCountUsers = deliveriesToUsers,
+                repeatCountGroups = deliveriesToGroup,
                 event = event,
                 group = group,
                 users = when {
                     group == null -> setOf(dbUser)
-                    repeatUsers > 0 -> subscriptionService.findUsersByGroup(group).toSet()
+                    deliveriesToUsers > 0 -> subscriptionService.findUsersByGroup(group).toSet()
                     else -> emptySet()
                 }
             )
@@ -162,13 +168,17 @@ class NotifyScheduleCommand(
 
     private fun formatHelp(reason: String): String {
         return """
-            $reason
+        $reason
 
 📌 Формат команды:
-/notify_schedule <CALL|MR|RELEASE> <ссылка> <время начала> <место...> <дата> <время> <описание...> [повторы в ЛС] [повторы в группу] [интервал] [группа]
+/notify_schedule <CALL|MR|RELEASE> <ссылка> <время начала> <место...> <дата> <время> <описание...>; <доставок в ЛС> <доставок в группу> <интервал (минут)> [группа]
+
+🔹 <доставок в ЛС> — сколько раз всего уведомление будет доставлено подписанным пользователям в личные сообщения.
+🔹 <доставок в группу> — сколько раз всего уведомление будет отправлено в групповой чат.
+🔹 <интервал> — пауза в минутах между доставками (общая для всех).
 
 🧩 Пример:
-/notify_schedule CALL https://zoom.us/j/123456789 15:00 Zoom 21.07.2025 15:00 Обсуждение проекта 2 1 10 backend
+/notify_schedule CALL https://zoom.us/j/123456789 15:00 Zoom 21.07.2025 15:00 Обсуждение проекта; 1 0 0 backend
         """.trimIndent()
     }
 }

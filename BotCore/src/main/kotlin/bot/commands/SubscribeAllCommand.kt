@@ -66,7 +66,7 @@ class SubscribeAllCommand(
         }
 
         if (!isPrivate) {
-            // Вызов из группы — подписываем всех админов
+            // Вызов из группы — подписываем всех админов и отправляем кнопку
             try {
                 val admins = sender.execute(GetChatAdministrators(chatId))
                     .map { it.user }
@@ -78,31 +78,28 @@ class SubscribeAllCommand(
                     if (subscriptionService.subscribe(userModel, group)) count++
                 }
 
-                sender.execute(SendMessage(chatId, "✅ Подписано $count администраторов чата '${group.name}'"))
-            } catch (e: Exception) {
-                sender.execute(SendMessage(chatId, "❌ Ошибка при подписке: ${e.message}"))
-            }
-        } else {
-            // Вызов из лички — отправляем кнопку в сам чат
-            val button = InlineKeyboardButton.builder()
-                .text("📥 Подписаться на группу ${group.name}")
-                .callbackData("subscribe_group:${group.id}")
-                .build()
+               // sender.execute(SendMessage(chatId, "✅ Подписано $count администраторов чата '${group.name}'"))
 
-            val keyboard = InlineKeyboardMarkup(listOf(listOf(button)))
+                // 🔘 Отправляем кнопку для остальных участников
+                val button = InlineKeyboardButton.builder()
+                    .text("📥 Подписаться на группу ${group.name}")
+                    .callbackData("subscribe_group:${group.id}")
+                    .build()
 
-            try {
+                val keyboard = InlineKeyboardMarkup(listOf(listOf(button)))
+
                 sender.execute(
-                    SendMessage(targetChatId, "👥 Чтобы подписаться на группу *${group.name}*, нажмите кнопку ниже.")
+                    SendMessage(chatId, "👥 Участники, чтобы подписаться на группу *${group.name}*, нажмите кнопку ниже.")
                         .apply {
                             enableMarkdown(true)
                             replyMarkup = keyboard
                         }
                 )
-                sender.execute(SendMessage(chatId, "✅ Кнопка подписки отправлена в чат."))
+
             } catch (e: Exception) {
-                sender.execute(SendMessage(chatId, "❌ Не удалось отправить сообщение в чат: ${e.message}"))
+                sender.execute(SendMessage(chatId, "❌ Ошибка при подписке: ${e.message}"))
             }
         }
+
     }
 }

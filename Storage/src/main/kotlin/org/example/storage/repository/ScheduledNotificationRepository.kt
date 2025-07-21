@@ -1,5 +1,6 @@
 package org.example.storage.repository
 
+import org.example.storage.model.Group
 import org.example.storage.model.ScheduledNotification
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -40,6 +41,14 @@ interface ScheduledNotificationRepository : JpaRepository<ScheduledNotification,
     )
     fun findDueWithTargets(@Param("time") time: LocalDateTime): List<ScheduledNotification>
 
+    @Query(
+        """
+    SELECT s FROM ScheduledNotification s
+    JOIN s.targetGroups g
+    WHERE g = :group
+    """
+    )
+    fun findAllByGroup(@Param("group") group: Group): List<ScheduledNotification>
 
 
 

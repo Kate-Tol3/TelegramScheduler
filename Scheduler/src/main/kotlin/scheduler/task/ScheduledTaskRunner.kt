@@ -12,7 +12,7 @@ class ScheduledTaskRunner(
     private val scheduledNotificationService: ScheduledNotificationService,
     private val kafkaProducer: NotificationKafkaProducer
 ) {
-    @Scheduled(fixedRate = 60000) // каждый 60 секунд
+    @Scheduled(fixedRate = 5000) // каждый 60 секунд
     fun dispatchDueNotifications() {
         val now = LocalDateTime.now()
         val dueNotifications = scheduledNotificationService.getDueNotificationsWithTargets(now)

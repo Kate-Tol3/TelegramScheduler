@@ -8,7 +8,7 @@ import java.util.*
 class Group(
     @Id @GeneratedValue val id: UUID? = null,
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     var name: String,
 
     @Column(nullable = false)
