@@ -9,7 +9,7 @@ class Group(
     @Id @GeneratedValue val id: UUID? = null,
 
     @Column(nullable = false, unique = true)
-    val name: String,
+    var name: String,
 
     @Column(nullable = false)
     val description: String,

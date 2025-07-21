@@ -49,7 +49,9 @@ class TelegramBot(
 
         // ✅ Доступ к приватным группам
         register(GrantAccessCommand(userService, groupService))
-        register(RevokeAccessCommand(userService, groupService))
+        register(RevokeAccessCommand(userService, groupService, subscriptionService))
+        register(GrantNotifyRightsCommand(userService, groupService))
+        register(RevokeNotifyRightsCommand(userService, groupService))
         register(AllowedUsersCommand(groupService, userService))
 
         // ✅ Шаблоны (если нужно)

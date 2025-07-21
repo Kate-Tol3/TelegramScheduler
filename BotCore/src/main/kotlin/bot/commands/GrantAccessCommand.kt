@@ -17,7 +17,9 @@ class GrantAccessCommand(
         val chatId = chat.id.toString()
 
         if (arguments.size < 2) {
-            sender.execute(SendMessage(chatId, "⚠️ Формат: /grant_access <группа> @username"))
+            sender.execute(
+                SendMessage(chatId, "⚠️ Формат: /grant_access <группа> @username")
+            )
             return
         }
 
@@ -30,39 +32,62 @@ class GrantAccessCommand(
         } else {
             chat.id.toString()
         }
+
         val group = groupService.findByName(groupName, contextChatId, requester)
-
-
         if (group == null) {
-            sender.execute(SendMessage(chatId, "❌ Группа '${escape(groupName)}' не найдена или недоступна."))
+            sender.execute(
+                SendMessage(chatId, "❌ Группа \"$groupName\" не найдена или недоступна.")
+            )
             return
         }
 
         if (group.owner?.id != requester.id) {
-            sender.execute(SendMessage(chatId, "❌ Только владелец может управлять доступом к группе '${escape(groupName)}'."))
+            sender.execute(
+                SendMessage(chatId, "❌ Только владелец может управлять доступом к группе \"$groupName\".")
+            )
             return
         }
 
         val targetUser = userService.findByUsername(username)
         if (targetUser == null) {
-            sender.execute(SendMessage(chatId, "❌ Пользователь @$username не найден."))
+            sender.execute(
+                SendMessage(chatId, "❌ Пользователь @$username не найден.")
+            )
             return
         }
 
-        val alreadyHasAccess = group.allowedUsers.contains(targetUser)
-        if (alreadyHasAccess) {
-            sender.execute(SendMessage(chatId, "⚠️ Пользователь @$username уже имеет доступ к группе '${escape(groupName)}'."))
+        val allGroups = groupService.findAllByName(group.name)
+        val conflict = allGroups.any {
+            it.owner?.id == requester.id &&
+                    (it.owner?.id == targetUser.id || it.allowedUsers.any { u -> u.id == targetUser.id })
+        }
+
+        if (conflict) {
+            sender.execute(
+                SendMessage(chatId, "⚠️ У пользователя @$username уже есть доступ к группе с таким названием и владельцем.")
+            )
             return
         }
 
-        // 👉 Вся логика перемещения в приватную теперь внутри сервиса
+        var renamed = false
+        if (!group.isPrivate && group.chatId != null) {
+            val newName = "${group.name} [от @${requester.username}]"
+            group.name = newName
+            renamed = true
+        }
+
         val updatedGroup = groupService.grantAccess(group, targetUser)
 
-        sender.execute(SendMessage(chatId, "✅ Доступ пользователя @$username к группе '${escape(groupName)}' предоставлен."))
-    }
+        val notice = buildString {
+            append("✅ Доступ пользователя @$username к группе \"${updatedGroup.name}\" предоставлен.")
+            if (renamed) {
+                appendLine()
+                append("ℹ️ Название группы изменено на \"${updatedGroup.name}\", чтобы обеспечить уникальность.")
+            }
+        }
 
-    private fun escape(text: String): String {
-        val charsToEscape = listOf('_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!')
-        return charsToEscape.fold(text) { acc, c -> acc.replace(c.toString(), "\\$c") }
+        sender.execute(
+            SendMessage(chatId, notice)
+        )
     }
 }

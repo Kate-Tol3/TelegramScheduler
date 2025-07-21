@@ -57,4 +57,14 @@ interface GroupRepository : JpaRepository<Group, UUID> {
     )
     fun findAllByNameWithUsers(@Param("name") name: String): List<Group>
 
+    @Query(
+        """
+    SELECT DISTINCT g FROM Group g
+    LEFT JOIN g.allowedUsers au
+    WHERE g.owner = :user OR au = :user
+    """
+    )
+    fun findAllByUserAccess(user: User): List<Group>
+
+
 }

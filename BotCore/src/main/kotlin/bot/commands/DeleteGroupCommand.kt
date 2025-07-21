@@ -29,29 +29,43 @@ class DeleteGroupCommand(
         val groupName = arguments.joinToString(" ").trim()
         val dbUser = userService.resolveUser(user)
 
-        val group = groupService.findByName(groupName, chatId, dbUser)
+        val group = groupService.findByName(groupName, if (chat.isUserChat) null else chatId, dbUser)
 
         if (group == null) {
-            sender.execute(
-                SendMessage(chatId, "❌ Группа *$groupName* не найдена или доступ к ней ограничен.")
-                    .apply { enableMarkdown(true) }
-            )
+            sender.execute(SendMessage(chatId, "❌ Группа *$groupName* не найдена или доступ к ней ограничен.")
+                .apply { enableMarkdown(true) })
             return
         }
 
-        if (group.isPrivate && group.owner?.id != dbUser.id) {
-            sender.execute(
-                SendMessage(chatId, "❌ Только владелец может удалить приватную группу *$groupName*.").apply { enableMarkdown(true) }
-            )
+        // 🔒 Запрет на удаление глобальных публичных групп
+        if (group.chatId == null && !group.isPrivate) {
+            sender.execute(SendMessage(chatId, "⛔ Глобальная публичная группа *$groupName* не может быть удалена.")
+                .apply { enableMarkdown(true) })
             return
         }
 
-        val subscribers = subscriptionService.findUsersByGroup(group)
+        // 🔒 Только владелец может удалить локальную или приватную группу
+        if (group.owner?.id != dbUser.id) {
+            sender.execute(SendMessage(chatId, "❌ Только владелец может удалить группу *$groupName*.").apply { enableMarkdown(true) })
+            return
+        }
+
+        val subscribers = subscriptionService.findUsersByGroup(group).filter { it.id != dbUser.id }
+
         if (subscribers.isNotEmpty()) {
             sender.execute(
-                SendMessage(chatId, "⛔ Нельзя удалить группу *$groupName*, пока на неё подписаны пользователи (${subscribers.size}).")
-                    .apply { enableMarkdown(true) }
+                SendMessage(chatId, """
+                    ⚠️ На группу *$groupName* всё ещё подписаны другие пользователи (${subscribers.size}).
+                    Если вы уверены, что хотите удалить её, повторите команду:  
+                    `/delete_group $groupName confirm`
+                """.trimIndent()).apply { enableMarkdown(true) }
             )
+            return
+        }
+
+        // Проверка подтверждения удаления, если подписчики всё ещё есть
+        if (arguments.size >= 2 && arguments[1] != "confirm") {
+            sender.execute(SendMessage(chatId, "❗ Для удаления группы добавьте `confirm` после имени.").apply { enableMarkdown(true) })
             return
         }
 

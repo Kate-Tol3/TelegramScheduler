@@ -38,14 +38,22 @@ class CreateGroupCommand(
             return
         }
 
-        val existingGroup = groupService.findByName(groupName, chatId, null)
-        if (existingGroup != null) {
-            sender.execute(SendMessage(chatId, "⚠️ Группа с названием '$groupName' уже существует в этом чате."))
+        val dbUser = userService.resolveUser(user)
+
+        // 🔍 Проверка: у пользователя уже есть группа с таким названием или доступ к такой
+        val allGroupsWithSameName = groupService.findAllByName(groupName)
+        val alreadyExistsForUser = allGroupsWithSameName.any { group ->
+            group.owner?.id == dbUser.id || group.allowedUsers.any { it.id == dbUser.id }
+        }
+
+        if (alreadyExistsForUser) {
+            sender.execute(
+                SendMessage(chatId, "⚠️ У вас уже есть группа (или доступ к ней) с названием '${groupName}'. Переименуйте новую группу.")
+            )
             return
         }
 
-        val dbUser = userService.resolveUser(user)
-
+        // ✅ Создание новой группы
         val newGroup = groupService.createGroup(
             name = groupName,
             chatId = chatId,
@@ -55,7 +63,6 @@ class CreateGroupCommand(
             allowedUsers = emptySet()
         )
 
-        // ✅ Автоматическая подписка владельца
         subscriptionService.subscribe(dbUser, newGroup)
 
         println("✅ Создана локальная группа '${newGroup.name}' в чате $chatId владельцем ${dbUser.username}")

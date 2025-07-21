@@ -18,10 +18,6 @@ class ListGroupsCommand(
         val dbUser = userService.resolveUser(user)
         val allGroups = groupService.findAllWithUsers()
 
-        println("📋 Отображение групп для пользователя ${dbUser.username} (id=${dbUser.telegramId})")
-        println("🗣 Тип чата: ${chat.type}, chatId=$chatId")
-        println("🔎 Всего групп в системе: ${allGroups.size}")
-
         val globalPublicGroups = allGroups.filter {
             it.chatId == null && !it.isPrivate
         }.sortedBy { it.name }
@@ -33,7 +29,7 @@ class ListGroupsCommand(
         val privateGlobalGroups = allGroups.filter {
             it.chatId == null &&
                     it.isPrivate &&
-                    it.allowedUsers.any { u -> u.id == dbUser.id }
+                    (it.owner?.id == dbUser.id || it.allowedUsers.any { u -> u.id == dbUser.id })
         }.sortedBy { it.name }
 
         val privateLocalGroups = allGroups.filter {
@@ -41,12 +37,6 @@ class ListGroupsCommand(
                     it.isPrivate &&
                     it.allowedUsers.any { u -> u.id == dbUser.id }
         }.sortedBy { it.name }
-
-
-        println("🌐 Глобальные публичные: ${globalPublicGroups.map { it.name }}")
-        println("📍 Локальные доступные: ${localGroups.map { it.name }}")
-        println("🔒 Приватные глобальные: ${privateGlobalGroups.map { it.name }}")
-        println("🔐 Приватные локальные (чужие чаты): ${privateLocalGroups.map { it.name }}")
 
         if (
             globalPublicGroups.isEmpty() &&
@@ -63,7 +53,7 @@ class ListGroupsCommand(
         if (globalPublicGroups.isNotEmpty()) {
             builder.appendLine("🌐 *Глобальные группы:*")
             globalPublicGroups.forEach {
-                builder.appendLine("- ${escape(it.name)}")
+                builder.appendLine("\\- `${escape(it.name)}`")
             }
         }
 
@@ -71,35 +61,44 @@ class ListGroupsCommand(
             builder.appendLine("\n📍 *Локальные группы:*")
             localGroups.forEach {
                 val label = buildString {
-                    append(it.name)
-                    if (it.owner?.id == dbUser.id) append(" (ваша)")
-                    if (it.isPrivate && it.owner?.id != dbUser.id) append(" [приватная]")
+                    append("`${escape(it.name)}`")
+                    if (it.owner?.id == dbUser.id) append(" \\(ваша\\)")
+                    if (it.isPrivate && it.owner?.id != dbUser.id) append(" \\[приватная\\]")
                 }
-                builder.appendLine("- ${escape(label)}")
+                builder.appendLine("\\- `${escape(it.name)}`")
+
             }
         }
 
         if (privateGlobalGroups.isNotEmpty()) {
             builder.appendLine("\n🔒 *Приватные глобальные группы:*")
             privateGlobalGroups.forEach {
-                builder.appendLine("- ${escape(it.name)}")
+                val label = buildString {
+                    append("`${escape(it.name)}`")
+                    if (it.owner?.id == dbUser.id) append(" \\(ваша\\)")
+                }
+                builder.appendLine("\\- `${escape(it.name)}`")
+
             }
         }
 
         if (privateLocalGroups.isNotEmpty()) {
             builder.appendLine("\n🔐 *Приватные локальные группы:*")
             privateLocalGroups.forEach {
-                builder.appendLine("- ${escape(it.name)}")
+                builder.appendLine("\\- `${escape(it.name)}`")
+
             }
         }
 
-        sender.execute(SendMessage(chatId, builder.toString().trim()).apply {
-            parseMode = "Markdown"
-        })
+        sender.execute(
+            SendMessage(chatId, builder.toString().trim()).apply {
+                parseMode = "MarkdownV2"
+            }
+        )
     }
 
     private fun escape(text: String): String {
-        val charsToEscape = listOf('_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!')
-        return charsToEscape.fold(text) { acc, c -> acc.replace(c.toString(), "\\$c") }
+        val charsToEscape = listOf("\\", "`", "_", "*", "[", "]", "(", ")", "~", "#", "+", "-", "=", "|", "{", "}", ".", "!")
+        return charsToEscape.fold(text) { acc, c -> acc.replace(c, "\\$c") }
     }
 }

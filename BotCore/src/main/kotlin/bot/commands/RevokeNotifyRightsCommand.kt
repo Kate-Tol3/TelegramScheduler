@@ -8,16 +8,16 @@ import org.telegram.telegrambots.meta.api.objects.Chat
 import org.telegram.telegrambots.meta.api.objects.User
 import org.telegram.telegrambots.meta.bots.AbsSender
 
-class GrantNotifyRightsCommand(
+class RevokeNotifyRightsCommand(
     private val userService: UserService,
     private val groupService: GroupService
-) : BotCommand("grant_notify_rights", "Выдать право на отправку уведомлений в группу") {
+) : BotCommand("revoke_notify_rights", "Отозвать право на отправку уведомлений") {
 
     override fun execute(sender: AbsSender, user: User, chat: Chat, arguments: Array<String>) {
         val chatId = chat.id.toString()
 
         if (arguments.size < 2) {
-            sender.execute(SendMessage(chatId, "⚠️ Формат: /grant_notify_rights <группа> @username"))
+            sender.execute(SendMessage(chatId, "⚠️ Формат: /revoke_notify_rights <группа> @username"))
             return
         }
 
@@ -28,13 +28,18 @@ class GrantNotifyRightsCommand(
 
         val group = groupService.findByName(groupName, contextChatId, requester)
 
+        println("🚫 Попытка отозвать notify-права:")
+        println("👤 Запрос от: ${requester.username} (id=${requester.telegramId})")
+        println("👥 Группа: $groupName")
+        println("🎯 Цель: @$username")
+
         if (group == null) {
             sender.execute(SendMessage(chatId, "❌ Группа '${escape(groupName)}' не найдена или недоступна."))
             return
         }
 
         if (group.owner?.id != requester.id) {
-            sender.execute(SendMessage(chatId, "❌ Только владелец может выдавать права на уведомления."))
+            sender.execute(SendMessage(chatId, "❌ Только владелец может отзывать notify-права."))
             return
         }
 
@@ -44,20 +49,17 @@ class GrantNotifyRightsCommand(
             return
         }
 
-        if (group.notifiers.any { it.id == targetUser.id }) {
-            sender.execute(SendMessage(chatId, "⚠️ Пользователь @$username уже может отправлять уведомления."))
+        val removed = group.notifiers.removeIf { it.id == targetUser.id }
+
+        if (!removed) {
+            sender.execute(SendMessage(chatId, "⚠️ У пользователя @$username не было прав на уведомления."))
             return
         }
 
-        val isListener = targetUser.id == group.owner?.id || group.allowedUsers.any { it.id == targetUser.id }
-        if (!isListener) {
-            sender.execute(SendMessage(chatId, "⚠️ Сначала вы должны выдать доступ через /grant_access."))
-            return
-        }
+        groupService.save(group)
 
-        val updatedGroup = groupService.grantNotifyRights(group, targetUser)
-
-        sender.execute(SendMessage(chatId, "✅ Пользователь @$username теперь может отправлять уведомления в группу '${escape(updatedGroup.name)}'."))
+        println("✅ Права пользователя @$username отозваны из группы '${group.name}'")
+        sender.execute(SendMessage(chatId, "✅ Пользователь @$username больше не может отправлять уведомления в группу '${escape(group.name)}'."))
     }
 
     private fun escape(text: String): String {

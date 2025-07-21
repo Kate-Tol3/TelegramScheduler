@@ -31,7 +31,7 @@ class NotificationKafkaConsumer(
         println("📨 Получено уведомление из Kafka: $message")
 
         // ❗ Теперь используем метод с 3 аргументами (user = null)
-        val group = groupService.findByName(message.groupName, message.chatId, null)
+        val group = groupService.findByNameInternal(message.groupName, message.chatId)
 
         if (group == null) {
             println("❌ Группа '${message.groupName}' не найдена или доступ к ней ограничен")

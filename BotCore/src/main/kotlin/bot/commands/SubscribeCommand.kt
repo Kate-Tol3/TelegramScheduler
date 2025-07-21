@@ -35,13 +35,15 @@ class SubscribeCommand(
         val group = groupService.findByName(groupName, contextChatId, dbUser)
 
         if (group == null) {
-            sender.execute(SendMessage(chatId, "❌ Группа '${escape(groupName)}' не найдена или доступ к ней ограничен."))
+            sender.execute(SendMessage(chatId, "❌ Группа '$groupName' не найдена или доступ к ней ограничен."))
             return
         }
 
         println("🟢 Найдена группа '${group.name}' (chatId=${group.chatId}, isPrivate=${group.isPrivate})")
 
+        val isOwner = group.owner?.id == dbUser.id
         val hasAccess = when {
+            isOwner -> true
             group.chatId == chatId -> true
             group.chatId == null && !group.isPrivate -> true
             group.chatId == null && group.isPrivate && group.allowedUsers.any { it.id == dbUser.id } -> true
@@ -49,22 +51,21 @@ class SubscribeCommand(
         }
 
         if (!hasAccess) {
-            sender.execute(SendMessage(chatId, "❌ У вас нет доступа к группе '${escape(group.name)}'"))
+            sender.execute(SendMessage(chatId, "❌ У вас нет доступа к группе '${group.name}'"))
+            return
+        }
+
+        val alreadySubscribed = subscriptionService.isSubscribed(dbUser, group)
+        if (alreadySubscribed) {
+            sender.execute(SendMessage(chatId, "⚠️ Вы уже подписаны на группу '${group.name}'."))
             return
         }
 
         val subscribed = subscriptionService.subscribe(dbUser, group)
-        val result = if (subscribed) {
-            "✅ Вы успешно подписались на группу '${escape(group.name)}'."
+        if (subscribed) {
+            sender.execute(SendMessage(chatId, "✅ Вы успешно подписались на группу '${group.name}'."))
         } else {
-            "⚠️ Вы уже подписаны на группу '${escape(group.name)}'."
+            sender.execute(SendMessage(chatId, "⚠️ Не удалось подписаться на группу '${group.name}'."))
         }
-
-        sender.execute(SendMessage(chatId, result))
-    }
-
-    private fun escape(text: String): String {
-        val charsToEscape = listOf('_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!')
-        return charsToEscape.fold(text) { acc, c -> acc.replace(c.toString(), "\\$c") }
     }
 }

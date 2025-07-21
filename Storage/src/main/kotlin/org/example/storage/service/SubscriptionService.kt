@@ -63,6 +63,10 @@ class SubscriptionService(
         } else false
     }
 
+    fun isSubscribed(user: User, group: Group): Boolean {
+        return subscriptionRepository.findByUserAndGroup(user, group) != null
+    }
+
     fun findByUser(user: User): List<Subscription> = subscriptionRepository.findByUser(user)
 
     /**

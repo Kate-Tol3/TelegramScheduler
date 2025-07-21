@@ -87,15 +87,20 @@ class GroupService(private val groupRepository: GroupRepository) {
     fun grantAccess(group: Group, user: User): Group {
         group.allowedUsers.add(user)
 
-        // Превращаем локальную группу в глобальную приватную, если это первое делегирование
+        // Преобразуем в глобальную приватную (если это первое делегирование)
         if (!group.isPrivate && group.chatId != null && user != group.owner) {
             println("🔁 Преобразуем '${group.name}' в глобальную приватную")
             group.chatId = null
             group.isPrivate = true
+            // 👉 Добавляем пометку владельца в название
+            val suffix = " [от @${group.owner?.username ?: "owner"}]"
+            group.name = if (!group.name.endsWith(suffix)) group.name + suffix else group.name
         }
 
         return groupRepository.save(group)
     }
+
+
 
 
     fun grantNotifyRights(group: Group, user: User): Group {
@@ -110,4 +115,25 @@ class GroupService(private val groupRepository: GroupRepository) {
     fun isAllowed(group: Group, user: User): Boolean {
         return user == group.owner || group.allowedUsers.contains(user)
     }
+
+    fun findByNameInternal(name: String, chatId: String?): Group? {
+        val normalizedChatId = when (name.lowercase()) {
+            "backend", "frontend", "devops", "design", "all" -> null
+            else -> chatId?.ifBlank { null }
+        }
+
+        println("🔍 Внутренний поиск группы (без проверок доступа): name=$name, chatId=$normalizedChatId")
+
+        val localOrGlobal = groupRepository.findByNameWithUsers(name, normalizedChatId)
+        if (localOrGlobal != null) return localOrGlobal
+
+        val candidates = groupRepository.findAllByNameWithUsers(name)
+        return candidates.firstOrNull { it.chatId == null && it.isPrivate }
+    }
+
+
+
+
+
+
 }
