@@ -1,4 +1,119 @@
+#services:
+#  zookeeper:
+#    image: confluentinc/cp-zookeeper:7.3.0
+#    ports:
+#      - "2181:2181"
+#    environment:
+#      ZOOKEEPER_CLIENT_PORT: 2181
+#      ZOOKEEPER_TICK_TIME: 2000
+#
+#  kafka:
+#    image: confluentinc/cp-kafka:7.3.0
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      KAFKA_BROKER_ID: 1
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+
+#services:
+#  postgres:
+#    image: postgres:15
+#    ports:
+#      - "5432:5432"
+#    environment:
+#      POSTGRES_DB: ${POSTGRES_DB}
+#      POSTGRES_USER: ${POSTGRES_USER}
+#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#    volumes:
+#      - pgdata:/var/lib/postgresql/data
+#
+#  zookeeper:
+#    image: confluentinc/cp-zookeeper:7.3.0
+#    ports:
+#      - "2181:2181"
+#    environment:
+#      ZOOKEEPER_CLIENT_PORT: 2181
+#      ZOOKEEPER_TICK_TIME: 2000
+#
+#  kafka:
+#    image: confluentinc/cp-kafka:7.3.0
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      KAFKA_BROKER_ID: 1
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#    depends_on:
+#      - zookeeper
+#
+#  bot:
+#    build:
+#      context: .
+#      dockerfile: BotCore/Dockerfile
+#    ports:
+#      - "${BOT_SERVER_PORT}:8080"
+#    environment:
+#      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+#      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+#      SPRING_DATASOURCE_URL: ${BOT_DATASOURCE_URL}
+#      SPRING_DATASOURCE_USERNAME: ${BOT_DATASOURCE_USERNAME}
+#      SPRING_DATASOURCE_PASSWORD: ${BOT_DATASOURCE_PASSWORD}
+#      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${BOT_KAFKA_BOOTSTRAP}
+#    depends_on:
+#      - kafka
+#      - postgres
+#
+#  scheduler:
+#    build:
+#      context: .
+#      dockerfile: Scheduler/Dockerfile
+#    environment:
+#      SPRING_DATASOURCE_URL: ${SCHEDULER_DATASOURCE_URL}
+#      SPRING_DATASOURCE_USERNAME: ${SCHEDULER_DATASOURCE_USERNAME}
+#      SPRING_DATASOURCE_PASSWORD: ${SCHEDULER_DATASOURCE_PASSWORD}
+#      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SCHEDULER_KAFKA_BOOTSTRAP}
+#    depends_on:
+#      - kafka
+#      - postgres
+#
+#  restapi:
+#    build:
+#      context: .
+#      dockerfile: RESTAPI/Dockerfile
+#    ports:
+#      - "${RESTAPI_SERVER_PORT}:8080"
+#    environment:
+#      SPRING_DATASOURCE_URL: ${RESTAPI_DATASOURCE_URL}
+#      SPRING_DATASOURCE_USERNAME: ${RESTAPI_DATASOURCE_USERNAME}
+#      SPRING_DATASOURCE_PASSWORD: ${RESTAPI_DATASOURCE_PASSWORD}
+#      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${RESTAPI_KAFKA_BOOTSTRAP}
+#    depends_on:
+#      - kafka
+#      - postgres
+#
+#volumes:
+#  pgdata:
+
+
 services:
+  postgres:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
     ports:
@@ -6,6 +121,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - backend
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -14,5 +131,68 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    networks:
+      - backend
+
+  bot:
+    build:
+      context: .
+      dockerfile: BotCore/Dockerfile
+    ports:
+      - "${BOT_SERVER_PORT}:8080"
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+      SPRING_DATASOURCE_URL: ${BOT_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${BOT_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${BOT_DATASOURCE_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${BOT_KAFKA_BOOTSTRAP}
+    depends_on:
+      - kafka
+      - postgres
+    networks:
+      - backend
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Scheduler/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: ${SCHEDULER_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SCHEDULER_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SCHEDULER_DATASOURCE_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SCHEDULER_KAFKA_BOOTSTRAP}
+    depends_on:
+      - kafka
+      - postgres
+    networks:
+      - backend
+
+  restapi:
+    build:
+      context: .
+      dockerfile: RESTAPI/Dockerfile
+    ports:
+      - "${RESTAPI_SERVER_PORT}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: ${RESTAPI_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${RESTAPI_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${RESTAPI_DATASOURCE_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${RESTAPI_KAFKA_BOOTSTRAP}
+    depends_on:
+      - kafka
+      - postgres
+    networks:
+      - backend
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+    driver: bridge

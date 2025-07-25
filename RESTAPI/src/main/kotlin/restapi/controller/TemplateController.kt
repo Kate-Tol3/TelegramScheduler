@@ -15,11 +15,13 @@ class TemplateController(
     private val templateService: TemplateService
 ) {
 
+    //GET/api/templates
     @GetMapping
     fun getAll(): List<TemplateDto> {
         return templateService.findAll().map { it.toDto() }
     }
 
+    //POST/api/templates
     @PostMapping
     fun create(@RequestBody request: CreateTemplateRequest): TemplateDto {
         val template = Template(

@@ -47,7 +47,7 @@ dependencies {
     // Подключение модуля Storage
     implementation(project(":Storage"))
     implementation(project(":KafkaMessaging"))
-    implementation(project(":RESTAPI"))
+//    implementation(project(":RESTAPI"))
 
     // Тесты
     testImplementation(kotlin("test"))
@@ -71,11 +71,16 @@ tasks.named<JavaExec>("bootRun") {
     )
 }
 
-tasks.withType<Jar> {
-    manifest {
-        attributes["Main-Class"] = "org.example.restapi.RestApiApplicationKt"
-    }
+//tasks.withType<Jar> {
+//    manifest {
+//        attributes["Main-Class"] = "org.example.restapi.RestApiApplicationKt"
+//    }
+//}
+
+tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar> {
+    mainClass.set("org.example.bot.BotApplicationKt")
 }
+
 
 
 kotlin {

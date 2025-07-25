@@ -1,21 +1,22 @@
-# === ОБЩИЕ НАСТРОЙКИ (для всех модулей) ===
 bot:
   token: ${TELEGRAM_BOT_TOKEN}
   username: ${TELEGRAM_BOT_USERNAME}
+
+server:
+  port: ${BOT_SERVER_PORT}
 
 spring:
   main:
     allow-bean-definition-overriding: true
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/telegrambot
-    username: bot_user
-    password: bot_password
+    url: ${BOT_DATASOURCE_URL}
+    username: ${BOT_DATASOURCE_USERNAME}
+    password: ${BOT_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-#      ddl-auto: update
       ddl-auto: create
     show-sql: true
     properties:
@@ -23,19 +24,15 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${BOT_KAFKA_BOOTSTRAP}
     consumer:
-      group-id: my-consumer-group
+      group-id: bot-consumer-group
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
-  logging:
-    level:
-      org.springframework.kafka: INFOz y
-      org.example.scheduler: DEBUG
 
-
-
+logging:
+  level:
+    org.springframework.kafka: INFO
+    org.example.bot: DEBUG

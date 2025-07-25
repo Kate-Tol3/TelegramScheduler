@@ -35,7 +35,7 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
 
-
+    implementation("me.paulschwarz:spring-dotenv:3.0.0")
 
     implementation(project(":KafkaMessaging")) // DTO
     implementation("org.springframework.kafka:spring-kafka")
@@ -50,6 +50,11 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
+tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar> {
+    mainClass.set("org.example.scheduler.SchedulerApplicationKt")
+}
+
 
 kotlin {
     jvmToolchain(17)

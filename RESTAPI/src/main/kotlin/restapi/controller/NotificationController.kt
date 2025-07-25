@@ -5,6 +5,7 @@ import org.example.restapi.dto.ScheduleNotificationRequest
 import org.example.restapi.dto.SendImmediateNotificationRequest
 
 import org.example.restapi.kafka.NotificationKafkaProducer
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -18,17 +19,20 @@ class NotificationController(
      * Отправляет сообщение в Kafka (notification-send), обрабатывается в BotCore
      */
     @PostMapping("/immediate")
-    fun sendImmediate(@RequestBody request: SendImmediateNotificationRequest) {
-        val message = NotificationMessage(
-            text = request.text,
-            groupName = request.groupName,
-            chatId = null,
-            sendToUsers = request.private,
-            sendToGroup = request.chat,
-            type = "IMMEDIATE" // или другой подходящий тип
+    fun sendImmediate(@RequestBody request: SendImmediateNotificationRequest): ResponseEntity<String> {
+        kafkaProducer.sendNotification(
+            NotificationMessage(
+                text = request.text,
+                groupName = request.groupName,
+                chatId = null,
+                sendToUsers = request.private,
+                sendToGroup = request.chat,
+                type = "IMMEDIATE"
+            )
         )
-        kafkaProducer.sendNotification(message)
+        return ResponseEntity.ok("✅ Уведомление отправлено в Kafka")
     }
+
 
     /**
      * ⏰ Отложенная рассылка уведомления с повторами
