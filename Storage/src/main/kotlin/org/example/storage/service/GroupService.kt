@@ -64,7 +64,6 @@ class GroupService(private val groupRepository: GroupRepository) {
     }
 
 
-
     fun findAllByName(name: String): List<Group> = groupRepository.findAllByName(name)
 
     fun findByChatId(chatId: String): Group? = groupRepository.findByChatId(chatId)
@@ -95,8 +94,6 @@ class GroupService(private val groupRepository: GroupRepository) {
         scheduledNotificationService.deleteAllByGroup(group)
         groupRepository.delete(group)
     }
-
-
 
 
     fun createGroup(
@@ -153,7 +150,6 @@ class GroupService(private val groupRepository: GroupRepository) {
 
         return groupRepository.save(group)
     }
-
 
 
     fun isNotifier(group: Group, user: User): Boolean {

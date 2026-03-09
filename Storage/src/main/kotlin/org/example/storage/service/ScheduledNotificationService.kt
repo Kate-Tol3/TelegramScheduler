@@ -25,13 +25,13 @@ class ScheduledNotificationService(
         eventTime: LocalDateTime,
         repeatIntervalMinutes: Int,
         event: Event,
-        group: Group?, // ← теперь опционально
+        group: Group?, // опционально
         users: Set<User>,
         repeatCountUsers: Int,
         repeatCountGroups: Int
     ): ScheduledNotification {
 
-        // 🔒 Валидация параметров
+        // Валидация параметров
         require(repeatCountUsers >= 0) { "repeatCountUsers не может быть меньше 0" }
         require(repeatCountGroups >= 0) { "repeatCountGroups не может быть меньше 0" }
 
@@ -66,9 +66,6 @@ class ScheduledNotificationService(
             scheduledNotificationRepository.delete(notification)
         }
     }
-
-
-
 
     fun getDueNotificationsWithTargets(now: LocalDateTime): List<ScheduledNotification> {
         return scheduledNotificationRepository.findDueWithTargets(now)

@@ -40,7 +40,7 @@ class CreateGroupCommand(
 
         val dbUser = userService.resolveUser(user)
 
-        // 🔍 Проверка: у пользователя уже есть группа с таким названием или доступ к такой
+        //Проверка: у пользователя уже есть группа с таким названием или доступ к такой
         val allGroupsWithSameName = groupService.findAllByName(groupName)
         val alreadyExistsForUser = allGroupsWithSameName.any { group ->
             group.owner?.id == dbUser.id || group.allowedUsers.any { it.id == dbUser.id }
@@ -53,7 +53,7 @@ class CreateGroupCommand(
             return
         }
 
-        // ✅ Создание новой группы
+        // Создание новой группы
         val newGroup = groupService.createGroup(
             name = groupName,
             chatId = chatId,

@@ -30,7 +30,7 @@ class NotificationKafkaConsumer(
 
         println("📨 Получено уведомление из Kafka: $message")
 
-        // ❗ Теперь используем метод с 3 аргументами (user = null)
+        // Теперь метод с 3 аргументами (user = null)
         val group = groupService.findByNameInternal(message.groupName, message.chatId)
 
         if (group == null) {
@@ -38,7 +38,7 @@ class NotificationKafkaConsumer(
             return
         }
 
-        // 🔹 Отправка в групповой чат
+        // Отправка в групповой чат
         if (message.sendToGroup) {
             val chatId = group.chatId ?: message.chatId
             val resolvedChatId = chatId?.toLongOrNull()
@@ -49,7 +49,7 @@ class NotificationKafkaConsumer(
             }
         }
 
-        // 🔸 Отправка подписанным пользователям
+        // Отправка подписанным пользователям
         if (message.sendToUsers) {
             val users = subscriptionService.findUsersByGroup(group)
             if (users.isEmpty()) {

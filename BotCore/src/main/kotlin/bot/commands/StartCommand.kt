@@ -19,7 +19,7 @@ class StartCommand(
         val chatId = chat.id.toString()
         val dbUser = userService.resolveUser(user)
 
-        // ✅ Глобальные группы при старте (если не найдены — создаём)
+        // Глобальные группы при старте (если не найдены — создаём)
         val defaultGroups = listOf("backend", "frontend", "devops", "design", "all")
         val globalGroups = defaultGroups.map { name ->
             groupService.findByName(name, null, dbUser)
@@ -30,7 +30,7 @@ class StartCommand(
                 )
         }
 
-        // ✅ Приветствие + список команд (как /help)
+        // Приветствие + список команд (как /help)
         val greeting = buildString {
             append("Привет! Я бот, который поможет вам получать уведомления.\n\n")
             append("/help - Показать список всех команд\n")
@@ -38,7 +38,7 @@ class StartCommand(
 
         sender.execute(SendMessage(chatId, greeting))
 
-        // ✅ Предложение подписки в ЛС
+        // Предложение подписки в ЛС
         if (chat.isUserChat) {
             val userSubscriptions = subscriptionService.findByUser(dbUser)
             if (userSubscriptions.isEmpty()) {

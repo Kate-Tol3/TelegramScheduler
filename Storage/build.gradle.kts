@@ -30,7 +30,6 @@ dependencies {
     // Mockito + Kotlin
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
 
-    // Если ещё не добавлено:
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.mockito") // чтобы не конфликтовал с mockito-kotlin
     }

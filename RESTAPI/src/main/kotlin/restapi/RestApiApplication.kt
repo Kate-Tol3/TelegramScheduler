@@ -26,7 +26,7 @@ fun main(args: Array<String>) {
         addInitializers(
             ApplicationContextInitializer<GenericApplicationContext> { context ->
                 DotenvPropertySource.addToEnvironment(context.environment)
-                println("✅ Dotenv loaded. RESTAPI_SERVER_PORT = " + context.environment.getProperty("RESTAPI_SERVER_PORT"))
+                println("Dotenv loaded. RESTAPI_SERVER_PORT = " + context.environment.getProperty("RESTAPI_SERVER_PORT"))
             }
         )
     }

@@ -6,7 +6,7 @@
 //}
 //
 //dependencyResolutionManagement {
-//    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS) // 💥 это обязательно!
+//    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
 //    repositories {
 //        mavenCentral()
 //    }

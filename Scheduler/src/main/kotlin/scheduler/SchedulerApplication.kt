@@ -13,13 +13,13 @@ import org.springframework.transaction.annotation.EnableTransactionManagement
 @ComponentScan(basePackages = ["org.example"])
 @EntityScan(basePackages = ["org.example"])
 @EnableScheduling
-@EnableTransactionManagement // ← вот это добавь
+@EnableTransactionManagement
 class SchedulerApplication
 
 fun main(args: Array<String>) {
     System.setProperty("dotenv.directory", "..") // поднимаемся на уровень выше, если .env в корне проекта
     val app = org.springframework.boot.SpringApplication(SchedulerApplication::class.java)
-    app.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE) // 🔥 отключает веб
+    app.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE) //отключает веб
     app.run(*args)
 }
 

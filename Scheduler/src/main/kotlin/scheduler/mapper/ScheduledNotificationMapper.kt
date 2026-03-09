@@ -22,10 +22,6 @@ fun ScheduledNotification.toMessage(): NotificationMessage {
     )
 }
 
-
-
-
-
 private fun applyTemplate(template: String, payload: Map<String, String>): String {
     var result = template
     payload.forEach { (key, value) ->

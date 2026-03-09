@@ -32,7 +32,7 @@ class NotifyImmediateCommand(
             return
         }
 
-        // 🔹 Событие
+        // Событие
         val eventType = try {
             EventType.valueOf(args[0].uppercase())
         } catch (e: Exception) {
@@ -40,10 +40,10 @@ class NotifyImmediateCommand(
             return
         }
 
-        // 🔹 Ссылка
+        // Ссылка
         val link = args[1]
 
-        // 🔹 Время начала события
+        // Время начала события
         val timeRegex = Regex("""\d{1,2}:\d{2}""")
         val timeIndex = args.indexOfFirst { timeRegex.matches(it) }
 
@@ -52,11 +52,11 @@ class NotifyImmediateCommand(
             return
         }
 
-        // 🔹 Место и описание
+        // Место и описание
         val place = args.slice(2 until timeIndex).joinToString(" ")
         val timeStr = args[timeIndex]
 
-        // 🔹 Поиск позиции chat|private
+        // Поиск позиции chat|private
         val targetIndex = args.indexOfLast { it.equals("chat", true) || it.equals("private", true) }
         if (targetIndex == -1 || targetIndex == args.lastIndex) {
             sender.execute(SendMessage(chatId, "❌ Укажите 'chat' или 'private', а затем — имя группы."))
@@ -66,10 +66,10 @@ class NotifyImmediateCommand(
         val description = args.slice(timeIndex + 1 until targetIndex).joinToString(" ")
         val target = args[targetIndex].lowercase()
 
-        // 🔧 Группа: всё, что после chat/private
+        // Группа: всё, что после chat/private
         val groupName = args.drop(targetIndex + 1).joinToString(" ").trim()
 
-        // 🔹 Время события
+        // Время события
         val eventTime = try {
             val (h, m) = timeStr.split(":").map { it.toInt() }
             LocalDateTime.now().withHour(h).withMinute(m)
@@ -78,7 +78,7 @@ class NotifyImmediateCommand(
             return
         }
 
-        // 🔹 Получаем пользователя и группу
+        // Получаем пользователя и группу
         val dbUser = userService.resolveUser(user)
 
         val group = groupService.findByName(groupName, chatId, dbUser) { targetChatId ->
@@ -96,7 +96,7 @@ class NotifyImmediateCommand(
             return
         }
 
-        // 🔐 Проверка доступа к отправке
+        // Проверка доступа к отправке
         val isOwner = group.owner?.id == dbUser.id
         val isNotifier = groupService.isNotifier(group, dbUser)
         if (group.isPrivate && !isOwner && !isNotifier) {
@@ -104,7 +104,7 @@ class NotifyImmediateCommand(
             return
         }
 
-        // 🔎 Проверка подписки
+        // Проверка подписки
         val subscribers = subscriptionService.findUsersByGroup(group)
         val subscription = subscriptionService.findByUserAndGroup(dbUser, group)
         if (subscription == null) {
@@ -112,14 +112,14 @@ class NotifyImmediateCommand(
             return
         }
 
-        // 📋 Получаем шаблон
+        // Получаем шаблон
         val template = templateService.findByEventType(eventType)
         if (template == null) {
             sender.execute(SendMessage(chatId, "❌ Шаблон для события '$eventType' не найден."))
             return
         }
 
-        // 🛠 Формируем уведомление
+        // Формируем уведомление
         val payload = mapOf(
             "link" to link,
             "place" to place,
@@ -130,7 +130,7 @@ class NotifyImmediateCommand(
         val event = eventService.createEvent(eventType, payload)
         val message = notificationSender.applyTemplate(template, payload)
 
-        // 📤 Отправка
+        // Отправка
         when (target) {
             "chat" -> {
                 val groupChatId = group.chatId?.toLongOrNull()

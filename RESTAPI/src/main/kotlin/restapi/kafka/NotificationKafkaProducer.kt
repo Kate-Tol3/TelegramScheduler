@@ -11,12 +11,12 @@ class NotificationKafkaProducer(
     private val scheduleKafkaTemplate: KafkaTemplate<String, ScheduleNotificationRequest>
 ) {
     fun sendNotification(message: NotificationMessage) {
-        println("📤 [Kafka:notification-send] → $message") // ✅ лог
+        println("📤 [Kafka:notification-send] → $message") // лог
         immediateKafkaTemplate.send("notification-send", message)
     }
 
     fun sendScheduled(request: ScheduleNotificationRequest) {
-        println("⏰ [Kafka:notification-schedule] → $request") // ✅ лог
+        println("⏰ [Kafka:notification-schedule] → $request") // лог
         scheduleKafkaTemplate.send("notification-schedule", request)
     }
 }

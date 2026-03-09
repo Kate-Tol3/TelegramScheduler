@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 @Service
 class SubscriptionService(
     private val subscriptionRepository: SubscriptionRepository,
-    private val groupRepository: GroupRepository // ✅ добавлено
+    private val groupRepository: GroupRepository
 ) {
 
     fun findAll(): List<Subscription> = subscriptionRepository.findAll()
@@ -29,7 +29,7 @@ class SubscriptionService(
         }
         println("👑 Владелец: ${loadedGroup.owner?.username} (id=${loadedGroup.owner?.id})")
 
-        // 🔒 Проверка доступа
+        //Проверка доступа
         if (
             loadedGroup.isPrivate &&
             loadedGroup.allowedUsers.none { it.id == user.id } &&
@@ -38,7 +38,6 @@ class SubscriptionService(
             println("❌ Нет доступа: пользователь не найден среди allowedUsers и не является владельцем.")
             return false
         }
-
 
 
         val existing = subscriptionRepository.findByUserAndGroup(user, loadedGroup)
@@ -55,7 +54,6 @@ class SubscriptionService(
     }
 
 
-
     fun unsubscribe(user: User, group: Group): Boolean {
         val existing = subscriptionRepository.findByUserAndGroup(user, group)
         return if (existing != null) {
@@ -70,9 +68,6 @@ class SubscriptionService(
 
     fun findByUser(user: User): List<Subscription> = subscriptionRepository.findByUser(user)
 
-    /**
-     * ✅ Теперь метод загружает allowedUsers и корректно фильтрует подписчиков приватной группы
-     */
     fun findUsersByGroup(group: Group): List<User> {
         return subscriptionRepository.findByGroup(group).map { it.user }.distinct()
     }
