@@ -41,10 +41,10 @@ dependencies {
     //implementation("org.postgresql:postgresql")
     implementation("org.postgresql:postgresql:42.7.3")
 
-    // .env support (если используешь dotenv-файлы вручную)
+    // .env support (dotenv-файлы вручную)
     implementation("me.paulschwarz:spring-dotenv:3.0.0")
 
-    // Подключение модуля Storage
+
     implementation(project(":Storage"))
     implementation(project(":KafkaMessaging"))
 //    implementation(project(":RESTAPI"))

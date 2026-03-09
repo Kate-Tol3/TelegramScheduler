@@ -9,7 +9,7 @@ group = "org.example"
 version = "1.0-SNAPSHOT"
 
 repositories {
-    mavenCentral() // 💥 только его оставляем!
+    mavenCentral()
 }
 
 //dependencyManagement {
@@ -28,7 +28,6 @@ dependencies {
     implementation("org.springframework.kafka:spring-kafka")
     //implementation("org.springframework.boot:spring-boot-starter-scheduling")
 
-    // ✅ Добавь это:
     implementation("org.telegram:telegrambotsextensions:6.8.0")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
